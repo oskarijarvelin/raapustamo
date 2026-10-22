@@ -447,6 +447,10 @@
   font-size: 36px;
 }
 
+.kirjautuminen .logo-merkki {
+  align-self: flex-start;
+}
+
 .kirjautuminen label {
   display: flex;
   flex-direction: column;
