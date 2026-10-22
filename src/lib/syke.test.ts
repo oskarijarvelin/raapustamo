@@ -13,6 +13,8 @@ describe("sykkeenTila", () => {
     expect(sykkeenTila({ viimeksi_nahty: sitten(90), tiedot: {} }, NYT)).toBe("viive");
     expect(sykkeenTila({ viimeksi_nahty: sitten(5), tiedot: { verkossa: false } }, NYT)).toBe("viive");
     expect(sykkeenTila({ viimeksi_nahty: sitten(5), tiedot: { virheita_min: 2 } }, NYT)).toBe("viive");
+    expect(sykkeenTila({ viimeksi_nahty: sitten(5), tiedot: { silta: { yhteys: false, nakyvissa: false } } }, NYT)).toBe("viive");
+    expect(sykkeenTila({ viimeksi_nahty: sitten(5), tiedot: { silta: { yhteys: true, nakyvissa: false } } }, NYT)).toBe("ok");
   });
 
   it("merkitsee näytön poissaolevaksi kolmen minuutin jälkeen", () => {

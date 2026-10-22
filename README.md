@@ -5,6 +5,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 10,5 × 3 m LED-screenillä (4032 × 1152 px) osana Resolumen mainoskarusellia.
 
 - Suunnitelma: [docs/kehityssuunnitelma.md](docs/kehityssuunnitelma.md)
+- Resolume-silta: [silta/](silta/README.md)
 - Ilmeprototyypit: [prototyypit/](prototyypit/README.md)
 - Kuvat tuottajalle: [docs/kuvat/](docs/kuvat)
 
@@ -15,7 +16,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
 | `/?kiosk=ipad-1` | iPad-kioski | Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
-| `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` |
+| `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
 | `POST /api/piirrokset` | Piirtonäkymä | Validointi ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
@@ -66,12 +67,12 @@ npm run typecheck
   - Hyväksytyt piirrokset tallennetaan selaimen välimuistiin, ja Service Worker (`public/naytto-sw.js`, vain tuotannossa) tallentaa sivun ja sen tiedostot. Näyttö käynnistyy siis uudelleen myös ilman verkkoa.
   - Näyttö lähettää 30 sekunnin välein sykkeen, joka näkyy moderoinnin yläpalkissa: sininen = ok, oranssi = viive, verkkokatko tai virheitä, punainen = ei vastaa.
   - Näyttö palautuu itse: jos animaatio jumittuu yli 30 sekunniksi tai virheitä tulee yli 20 minuutissa, sivu ladataan uudelleen.
+  - Resolume-silta ([silta/](silta/README.md)) tahdistaa kierron karuselliin. Piirrokset vaihtuvat ja näyttökerrat kirjataan vain, kun Raapustamo-klippi on screenillä.
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
 ## Seuraavaksi (vaihe 3)
 
 - Tekoälyesisuodatus moderointiin (`ai_arvio`)
-- Resolume-silta (OSC/REST → WebSocket)
 - Kioskien oma tunniste (nyt `?kiosk=` antaa väljemmän rate limitin)
 - Botintorjunta (Turnstile)
 - Verkkogalleria

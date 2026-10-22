@@ -392,6 +392,10 @@ function Naytot({ naytot }: { naytot: NaytonSyke[] }) {
             `Nähty ${ikaTekstina(n.viimeksi_nahty, nyt)} sitten`,
             t.verkossa === false && "ei verkkoyhteyttä – pyörii välimuistista",
             t.virheita_min ? `${t.virheita_min} virhettä viimeisen minuutin aikana` : null,
+            t.silta &&
+              (t.silta.yhteys
+                ? `Resolume: Raapustamo-klippi ${t.silta.nakyvissa ? "screenillä" : "piilossa"}`
+                : "Resolume-silta ei vastaa – piirrokset kiertävät ilman tahdistusta"),
             t.naytolla?.length ? `Screenillä: ${t.naytolla.map(tunnus).join(", ")}` : null,
             `Piirroksia muistissa: ${t.piirroksia ?? "?"}`,
             `Layout ${t.layout ?? "?"} · versio ${t.versio ?? "?"} · käynnissä ${t.kaynnissa_min ?? "?"} min`,

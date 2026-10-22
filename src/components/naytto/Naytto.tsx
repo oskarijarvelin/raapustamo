@@ -26,6 +26,8 @@ interface Props {
   tunnus: string;
   /** Ajastettu uudelleenlataus minuutteina muistivuotojen varalle, 0 = pois */
   uudelleenlatausMin: number;
+  /** Resolume-sillan osoite (silta/silta.mjs), esim. http://localhost:7400 – null = ei siltaa */
+  siltaUrl: string | null;
 }
 
 const LEVEYS = 4032;
@@ -53,6 +55,8 @@ interface Solu {
   piirros: NaytettavaPiirros | null;
   seuraava: NaytettavaPiirros | null;
   uusi: boolean;
+  /** Piirros vaihtui, kun klippi ei ollut screenillä: näyttökerta kirjataan vasta näkyviin tullessa. */
+  kirjaamatta: boolean;
   vaihe: Vaihe;
   alku: number;
   seuraavaMikro: number;
@@ -117,11 +121,12 @@ function QrKoodi({ url }: { url: string }) {
   );
 }
 
-export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin }: Props) {
+export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin, siltaUrl }: Props) {
   const supabase = useMemo(() => selainAsiakas(), []);
   const solujenMaara = layout === "trio" ? 3 : layout === "solo" ? 1 : 12;
   const koko = layout === "seina" ? 576 : 1152;
 
+  const juuriRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const [tiedot, setTiedot] = useState<Tiedot[]>(() => Array(solujenMaara).fill(null));
   const [tauko, setTauko] = useState(false);
@@ -160,6 +165,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
         piirros: null,
         seuraava: null,
         uusi: false,
+        kirjaamatta: false,
         vaihe: "tyhja",
         alku: 0,
         seuraavaMikro: 0,
@@ -167,6 +173,21 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     });
 
     const piirrokset = new Map<string, NaytettavaPiirros>(lueValimuisti().map((p) => [p.id, p]));
+
+    // Resolume-silta kertoo, onko Raapustamo-klippi screenillä. Ilman siltaa tai sen yhteyttä
+    // oletetaan, että näyttö näkyy aina, jotta piirrokset kiertävät joka tapauksessa.
+    const silta = { yhteys: false, nakyvissa: false };
+    const naytetaan = () => !siltaUrl || !silta.yhteys || silta.nakyvissa;
+    const merkitseSilta = () => {
+      if (!juuriRef.current) return;
+      juuriRef.current.dataset.silta = !siltaUrl ? "ei-kaytossa" : !silta.yhteys ? "ei-yhteytta" : silta.nakyvissa ? "nakyvissa" : "piilossa";
+    };
+
+    function kirjaaNaytetyksi(p: NaytettavaPiirros) {
+      p.nayttokerrat += 1;
+      p.viimeksi_naytetty = new Date().toISOString();
+      supabase?.rpc("merkitse_naytetyksi", { piirros: p.id }).then(({ error }) => error && console.warn("Näyttökerran kirjaus epäonnistui", error));
+    }
     const paivitaTiedot = () => setTiedot(solut.map((s) => (s.piirros ? { nro: s.piirros.nro, uusi: s.uusi } : null)));
 
     function piirraSisalto(s: Solu, edistyminen: number) {
@@ -258,11 +279,8 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       if (!p && !pakota) return;
       s.seuraava = p ?? null;
       s.uusi = p ? p.nayttokerrat === 0 : false;
-      if (p) {
-        p.nayttokerrat += 1;
-        p.viimeksi_naytetty = new Date().toISOString();
-        supabase?.rpc("merkitse_naytetyksi", { piirros: p.id }).then(({ error }) => error && console.warn("Näyttökerran kirjaus epäonnistui", error));
-      }
+      s.kirjaamatta = Boolean(p) && !naytetaan();
+      if (p && naytetaan()) kirjaaNaytetyksi(p);
       if (s.vaihe === "tyhja") return aloitaPiirtyminen(s, performance.now());
       if (s.vaihe === "piirtyy") {
         // Kesken piirtymisen vaihdettaessa glitchataan ulos se, mitä ruudussa juuri nyt näkyy.
@@ -274,7 +292,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     }
 
     function kierros() {
-      if (taukoRef.current) return;
+      if (taukoRef.current || !naytetaan()) return;
       const kohteet = layout === "seina" ? [...solut].sort(() => Math.random() - 0.5).slice(0, 3) : solut;
       kohteet.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s), i * 700));
     }
@@ -307,7 +325,46 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     solut.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s, true), 300 + i * (layout === "seina" ? 250 : 700)));
     lataa();
     const paivitys = setInterval(lataa, PAIVITYSVALI);
-    const kierrokset = setInterval(kierros, vaihtoS * 1000);
+    let kierrokset = setInterval(kierros, vaihtoS * 1000);
+
+    /** Klippi tuli screenille: piirrokset piirtyvät esiin uudelleen ja kierros alkaa alusta. */
+    function tuliNakyviin() {
+      solut.forEach((s, i) =>
+        setTimeout(() => {
+          if (s.piirros && s.kirjaamatta) kirjaaNaytetyksi(s.piirros);
+          s.kirjaamatta = false;
+          if (!s.piirros) return vaihdaSeuraavaan(s);
+          if (s.vaihe === "valmis" || s.vaihe === "mikro") {
+            s.vaihe = "piirtyy";
+            s.alku = performance.now();
+          }
+        }, i * (layout === "seina" ? 150 : 500)),
+      );
+      clearInterval(kierrokset);
+      kierrokset = setInterval(kierros, vaihtoS * 1000);
+    }
+
+    let siltaLahde: EventSource | null = null;
+    if (siltaUrl) {
+      const paivitaSilta = (yhteys: boolean, nakyvissa: boolean) => {
+        const ennen = naytetaan();
+        silta.yhteys = yhteys;
+        silta.nakyvissa = nakyvissa;
+        merkitseSilta();
+        if (!ennen && naytetaan()) tuliNakyviin();
+      };
+      siltaLahde = new EventSource(new URL("/tapahtumat", siltaUrl));
+      siltaLahde.addEventListener("tila", (e) => {
+        try {
+          paivitaSilta(true, Boolean(JSON.parse((e as MessageEvent<string>).data).nakyvissa));
+        } catch (virhe) {
+          console.warn("Sillan viesti ei kelpaa", virhe);
+        }
+      });
+      // EventSource yhdistää itse uudelleen; sillä välin näyttö kiertää kuin ilman siltaa.
+      siltaLahde.onerror = () => paivitaSilta(false, silta.nakyvissa);
+    }
+    merkitseSilta();
 
     // Syke: moderointi näkee, että screen on elossa ja mitä siinä näkyy.
     const kaynnistetty = Date.now();
@@ -325,6 +382,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
             naytolla: solut.flatMap((s) => (s.piirros ? [s.piirros.nro] : [])),
             kaynnissa_min: Math.round((Date.now() - kaynnistetty) / 60_000),
             virheita_min: virheet.filter((t) => t > minuuttiSitten).length,
+            silta: siltaUrl ? { yhteys: silta.yhteys, nakyvissa: silta.nakyvissa } : null,
           },
         })
         .then(({ error }) => error && console.warn("Syke epäonnistui", error.message));
@@ -380,6 +438,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       clearInterval(paivitys);
       clearInterval(kierrokset);
       clearInterval(sykkeet);
+      siltaLahde?.close();
       clearInterval(vahti);
       clearTimeout(ajastettu);
       removeEventListener("error", virheKuuntelija);
@@ -387,7 +446,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       if (muutokset) supabase?.removeChannel(muutokset);
       if (komennot) supabase?.removeChannel(komennot);
     };
-  }, [supabase, layout, koko, solujenMaara, vaihtoS, nayttoTunnus, uudelleenlatausMin]);
+  }, [supabase, layout, koko, solujenMaara, vaihtoS, nayttoTunnus, uudelleenlatausMin, siltaUrl]);
 
   // Service Worker: näyttö käynnistyy välimuistista myös ilman verkkoa (vain tuotannossa,
   // koska kehityspalvelimen tiedostot muuttuvat jatkuvasti).
@@ -424,7 +483,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
   ));
 
   return (
-    <div className="nayttosivu">
+    <div className="nayttosivu" ref={juuriRef}>
       <div
         className="lava"
         data-layout={layout}
