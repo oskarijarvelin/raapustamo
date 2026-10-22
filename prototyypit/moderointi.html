@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>Raapustamo – moderointi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="brand.css" />
+    <style>
+      body {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ylapalkki {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 24px;
+        background: rgb(0 0 0 / 0.92);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--pinta-3);
+      }
+
+      .tuotemerkki {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .tuotemerkki .erotin {
+        width: 1px;
+        height: 18px;
+        background: var(--viiva);
+      }
+
+      .naytto-tila {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .naytto-tila[data-tila="live"] {
+        color: var(--valkoinen);
+      }
+
+      .naytto-tila[data-tila="live"] .piste {
+        background: var(--ok);
+        box-shadow: 0 0 0 4px rgb(77 85 220 / 0.3);
+      }
+
+      .naytto-tila[data-tila="tauko"] {
+        background: var(--varoitus);
+        color: var(--musta);
+      }
+
+      .valilehdet {
+        display: flex;
+        gap: 4px;
+        width: fit-content;
+        max-width: calc(100% - 48px);
+        margin: 20px 24px 0;
+        padding: 4px;
+        border-radius: var(--pyoristys-pill);
+        background: var(--pinta-2);
+        overflow-x: auto;
+      }
+
+      .valilehdet button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: var(--pyoristys-pill);
+        background: transparent;
+        color: var(--teksti-2);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .valilehdet button[aria-selected="true"] {
+        background: var(--valkoinen);
+        color: var(--musta);
+      }
+
+      .lukumaara {
+        min-width: 22px;
+        padding: 0 7px;
+        border-radius: var(--pyoristys-pill);
+        background: var(--pinta-3);
+        color: var(--valkoinen);
+        font-family: var(--font-teksti);
+        font-size: 12px;
+        line-height: 22px;
+        text-align: center;
+      }
+
+      .valilehdet button[aria-selected="true"] .lukumaara {
+        background: var(--musta);
+      }
+
+      main {
+        flex: 1;
+        padding: 20px 24px 32px;
+      }
+
+      /* --- Jono --- */
+
+      .jono {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 32px;
+        align-items: start;
+      }
+
+      .kasittely {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .kortti {
+        position: relative;
+        /* Päätösnapit pysyvät näkyvissä ilman vieritystä */
+        width: min(100%, 600px, calc(100dvh - 450px));
+        min-width: 260px;
+        aspect-ratio: 1;
+        border-radius: var(--pyoristys-kortti);
+        background: var(--musta);
+        box-shadow: inset 0 0 0 1px var(--viiva);
+        overflow: hidden;
+        touch-action: pan-y;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
+        transition: transform 220ms ease, opacity 220ms ease;
+      }
+
+      .kortti.vetaa {
+        transition: none;
+        cursor: grabbing;
+      }
+
+      .kortti canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .kortti.sumea canvas {
+        filter: blur(28px);
+      }
+
+      .kortti-yla {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .paljasta {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 12px;
+        text-align: center;
+      }
+
+      .pyyhkaisy {
+        position: absolute;
+        top: 50%;
+        padding: 10px 22px;
+        border: 3px solid currentColor;
+        border-radius: var(--pyoristys-pill);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        font-size: 22px;
+        text-transform: uppercase;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-50%) rotate(-8deg);
+      }
+
+      .pyyhkaisy--hyvaksy {
+        left: 24px;
+        color: var(--valkoinen);
+        opacity: var(--hyvaksy, 0);
+      }
+
+      .pyyhkaisy--hylkaa {
+        right: 24px;
+        color: var(--vaara);
+        opacity: var(--hylkaa, 0);
+        transform: translateY(-50%) rotate(8deg);
+      }
+
+      .tiedot {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        width: min(100%, 600px);
+      }
+
+      .arvio {
+        width: min(100%, 600px);
+        margin: 0;
+        padding: 14px 18px;
+        border-radius: 18px;
+        background: var(--pinta-2);
+        color: var(--teksti-2);
+        font-size: 14px;
+      }
+
+      .arvio strong {
+        color: var(--valkoinen);
+      }
+
+      .paatokset {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: min(100%, 600px);
+      }
+
+      .paatokset .nappi {
+        flex: 1;
+      }
+
+      .ikoninappi[aria-pressed="true"] {
+        background: var(--valkoinen);
+        color: var(--musta);
+      }
+
+      .pikanappaimet {
+        color: var(--teksti-3);
+        font-size: 12px;
+      }
+
+      kbd {
+        display: inline-block;
+        min-width: 22px;
+        padding: 0 6px;
+        border-radius: 6px;
+        background: var(--pinta-3);
+        color: var(--teksti-2);
+        font: 600 11px/20px var(--font-teksti);
+        text-align: center;
+      }
+
+      .tyhja {
+        display: grid;
+        place-items: center;
+        gap: 16px;
+        min-height: 50vh;
+        text-align: center;
+      }
+
+      .tyhja .otsikko {
+        font-size: 44px;
+      }
+
+      /* --- Jonolista --- */
+
+      .jonolista {
+        position: sticky;
+        top: 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: calc(100dvh - 120px);
+        overflow-y: auto;
+      }
+
+      .jonolista h2 {
+        margin: 0 0 4px;
+      }
+
+      .rivi {
+        display: grid;
+        grid-template-columns: 64px 1fr auto;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        padding: 8px 14px 8px 8px;
+        border: 0;
+        border-radius: 20px;
+        background: var(--pinta-1);
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .rivi[aria-current="true"] {
+        background: var(--pinta-3);
+        box-shadow: inset 0 0 0 2px var(--valkoinen);
+      }
+
+      .rivi canvas {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        background: var(--musta);
+      }
+
+      .rivi .sumea {
+        filter: blur(6px);
+      }
+
+      .rivi-teksti {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .rivi-teksti strong {
+        font-size: 15px;
+      }
+
+      /* --- Galleria (hyväksytyt / hylätyt) --- */
+
+      .galleria {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+      }
+
+      .galleriakortti {
+        display: flex;
+        flex-direction: column;
+        border-radius: var(--pyoristys-kortti);
+        background: var(--pinta-1);
+        overflow: hidden;
+      }
+
+      .galleriakortti canvas {
+        width: 100%;
+        aspect-ratio: 1;
+        background: var(--musta);
+      }
+
+      .galleriakortti .ala {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px 16px 16px;
+      }
+
+      .galleriakortti .tiedot {
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        font-size: 13px;
+      }
+
+      .galleriakortti .toiminnot {
+        display: flex;
+        gap: 8px;
+      }
+
+      .galleriakortti .toiminnot .nappi {
+        flex: 1;
+        min-height: 40px;
+        padding: 0 14px;
+        font-size: 13px;
+      }
+
+      .galleriakortti .ikoninappi {
+        width: 40px;
+        height: 40px;
+        flex: none;
+      }
+
+      /* --- Ilmoitus --- */
+
+      .ilmoitus {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 8px 8px 8px 22px;
+        border-radius: var(--pyoristys-pill);
+        background: var(--valkoinen);
+        color: var(--musta);
+        font-weight: 600;
+        transform: translateX(-50%);
+        box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
+      }
+
+      .ilmoitus .nappi {
+        min-height: 40px;
+        padding: 0 18px;
+        background: var(--musta);
+        color: var(--valkoinen);
+      }
+
+      footer {
+        padding: 16px 24px 24px;
+        color: var(--teksti-3);
+        font-size: 12px;
+      }
+
+      footer button {
+        border: 0;
+        background: none;
+        color: var(--teksti-2);
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      @media (max-width: 1000px) {
+        .jono {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .jonolista {
+          position: static;
+          order: -1;
+          flex-direction: row;
+          max-height: none;
+          overflow-x: auto;
+          padding-bottom: 4px;
+        }
+
+        .jonolista h2 {
+          display: none;
+        }
+
+        .rivi {
+          grid-template-columns: 56px;
+          width: auto;
+          padding: 6px;
+        }
+
+        .rivi canvas {
+          width: 56px;
+          height: 56px;
+        }
+
+        .rivi-teksti,
+        .rivi > .piste {
+          display: none;
+        }
+
+        .kortti {
+          width: min(100%, 600px, calc(100dvh - 520px));
+        }
+
+        .paatokset {
+          position: sticky;
+          bottom: 0;
+          z-index: 3;
+          padding: 12px 0 16px;
+          background: linear-gradient(to top, var(--musta) 70%, transparent);
+        }
+
+        .pikanappaimet {
+          display: none;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .ylapalkki {
+          padding: 12px 16px;
+        }
+
+        .ylapalkki .tuote-ala {
+          display: none;
+        }
+
+        .valilehdet {
+          margin: 16px 16px 0;
+          max-width: calc(100% - 32px);
+        }
+
+        main {
+          padding: 16px;
+        }
+
+        .paatokset .nappi {
+          padding: 0 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="ylapalkki">
+      <div class="tuotemerkki">
+        <img class="logo-merkki" src="assets/latf-merkki.png" alt="Lumo Art &amp; Tech Festival" />
+        <span class="erotin" aria-hidden="true"></span>
+        <span class="ylaotsikko">Raapustamo <span class="hiljainen tuote-ala">/ Moderointi</span></span>
+      </div>
+      <button class="siru naytto-tila" id="naytto-tila" type="button"></button>
+    </header>
+
+    <nav class="valilehdet" role="tablist" aria-label="Näkymä">
+      <button role="tab" data-valilehti="jono" aria-selected="true">Jono <span class="lukumaara" id="maara-jono">0</span></button>
+      <button role="tab" data-valilehti="hyvaksytty" aria-selected="false">Hyväksytyt <span class="lukumaara" id="maara-hyvaksytty">0</span></button>
+      <button role="tab" data-valilehti="hylatty" aria-selected="false">Hylätyt &amp; piilotetut <span class="lukumaara" id="maara-hylatty">0</span></button>
+    </nav>
+
+    <main id="sisalto"></main>
+
+    <footer>
+      Prototyyppi: tiedot tallentuvat vain tähän selaimeen, tekoälyarvio on simuloitu.
+      <button type="button" id="nollaa">Nollaa demodata</button>
+    </footer>
+
+    <div class="ilmoitus" id="ilmoitus" role="status" hidden>
+      <span id="ilmoitus-teksti"></span>
+      <button class="nappi" id="ilmoitus-peru" type="button">Peru</button>
+    </div>
+
+    <template id="jono-pohja">
+      <section class="jono">
+        <div class="kasittely">
+          <div class="kortti" id="kortti">
+            <canvas id="kortti-canvas"></canvas>
+            <div class="kortti-yla">
+              <span class="siru" id="ai-siru"></span>
+              <span class="siru siru--valkoinen" id="nostettu-siru" hidden>★ Nostettu</span>
+            </div>
+            <div class="paljasta" id="paljasta" hidden>
+              <span class="ylaotsikko">Tekoäly piilotti esikatselun</span>
+              <button class="nappi nappi--toissijainen" type="button" id="paljasta-nappi">Näytä piirros</button>
+            </div>
+            <span class="pyyhkaisy pyyhkaisy--hyvaksy">Hyväksy</span>
+            <span class="pyyhkaisy pyyhkaisy--hylkaa">Hylkää</span>
+          </div>
+          <div class="tiedot" id="tiedot"></div>
+          <p class="arvio" id="arvio"></p>
+          <div class="paatokset">
+            <button class="nappi nappi--vaara nappi--iso" type="button" id="hylkaa">✕ Hylkää</button>
+            <button class="ikoninappi" type="button" id="toista" aria-label="Toista piirtyminen" title="Toista piirtyminen (välilyönti)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+            </button>
+            <button class="ikoninappi" type="button" id="nosta" aria-label="Nosta suosikiksi" title="Nosta suosikiksi (N)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" /></svg>
+            </button>
+            <button class="nappi nappi--ensisijainen nappi--iso" type="button" id="hyvaksy">✓ Hyväksy</button>
+          </div>
+          <span class="pikanappaimet"><kbd>←</kbd> / <kbd>H</kbd> hylkää · <kbd>→</kbd> / <kbd>A</kbd> hyväksy · <kbd>N</kbd> nosta · <kbd>välilyönti</kbd> toista · <kbd>↑</kbd><kbd>↓</kbd> selaa</span>
+        </div>
+        <aside class="jonolista" id="jonolista" aria-label="Jono"></aside>
+      </section>
+    </template>
+
+    <script type="module">
+      import { piirrokset, paivitaPiirros, kuunteleMuutoksia, piirraPiirros, sovitaCanvas, tunnus, kellonaika, naytonTauko, asetaTauko, nollaaDemo } from "./raapustamo.js";
+
+      const LUOKAT = {
+        ok: { nimi: "OK", vari: "var(--ok)" },
+        epailyttava: { nimi: "Epäilyttävä", vari: "var(--varoitus)" },
+        sopimaton: { nimi: "Sopimaton", vari: "var(--vaara)" },
+      };
+      const LAHTEET = { mobiili: "Mobiili", "ipad-1": "iPad 1", "ipad-2": "iPad 2" };
+
+      const $ = (id) => document.getElementById(id);
+      const sisalto = $("sisalto");
+      let valilehti = "jono";
+      let valittuId = null;
+      const paljastetut = new Set();
+      const analysoidaan = new Set();
+
+      const prioriteetti = (p) => ({ sopimaton: 0, epailyttava: 1 })[p.ai_arvio?.luokka] ?? 2;
+      const jono = () =>
+        piirrokset()
+          .filter((p) => p.tila === "jonossa")
+          .sort((a, b) => prioriteetti(a) - prioriteetti(b) || a.luotu - b.luotu);
+      const piilotettava = (p) => p.ai_arvio?.luokka === "sopimaton" && !paljastetut.has(p.id);
+
+      function aiSiru(el, p) {
+        el.replaceChildren();
+        const piste = document.createElement("span");
+        piste.className = "piste";
+        if (!p.ai_arvio) {
+          piste.style.background = "var(--teksti-3)";
+          el.append(piste, "AI analysoi…");
+          return;
+        }
+        const luokka = LUOKAT[p.ai_arvio.luokka];
+        piste.style.background = luokka.vari;
+        el.append(piste, `AI: ${luokka.nimi} ${Math.round(p.ai_arvio.varmuus * 100)} %`);
+      }
+
+      // Tuotannossa luokittelu tehdään palvelimella heti lähetyksen jälkeen.
+      function simuloiAnalyysi(p) {
+        if (p.ai_arvio || analysoidaan.has(p.id)) return;
+        analysoidaan.add(p.id);
+        setTimeout(() => {
+          analysoidaan.delete(p.id);
+          paivitaPiirros(p.id, {
+            ai_arvio: { luokka: "ok", varmuus: 0.9 + Math.random() * 0.09, syy: "Ei havaittuja ongelmia." },
+          });
+          renderoi();
+        }, 1400);
+      }
+
+      function piirraPienoiskuva(canvas, p, koko) {
+        const px = sovitaCanvas(canvas, koko);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, px, px);
+        piirraPiirros(ctx, p, px);
+      }
+
+      // --- Ylapalkki ja välilehdet ---
+
+      function renderoiYla() {
+        const lista = piirrokset();
+        $("maara-jono").textContent = lista.filter((p) => p.tila === "jonossa").length;
+        $("maara-hyvaksytty").textContent = lista.filter((p) => p.tila === "hyvaksytty").length;
+        $("maara-hylatty").textContent = lista.filter((p) => p.tila === "hylatty" || p.tila === "piilotettu").length;
+        const tauko = naytonTauko();
+        const nappi = $("naytto-tila");
+        nappi.dataset.tila = tauko ? "tauko" : "live";
+        nappi.innerHTML = `<span class="piste"></span>${tauko ? "Näyttö tauolla · jatka" : "Näyttö live · pysäytä"}`;
+        nappi.title = tauko ? "Palauta piirrokset LED-screenille" : "Hätäpysäytys: screenillä näkyy vain logo ja QR-koodi";
+      }
+
+      $("naytto-tila").addEventListener("click", () => {
+        const tauko = !naytonTauko();
+        asetaTauko(tauko);
+        renderoiYla();
+        ilmoita(tauko ? "Näyttö pysäytetty" : "Näyttö palautettu");
+      });
+
+      for (const tab of document.querySelectorAll("[data-valilehti]")) {
+        tab.addEventListener("click", () => {
+          valilehti = tab.dataset.valilehti;
+          for (const t of document.querySelectorAll("[data-valilehti]")) t.setAttribute("aria-selected", String(t === tab));
+          renderoi();
+        });
+      }
+
+      // --- Jono ---
+
+      let animaatio = 0;
+
+      function toistaPiirtyminen(p) {
+        cancelAnimationFrame(animaatio);
+        const canvas = $("kortti-canvas");
+        if (!canvas) return;
+        const px = sovitaCanvas(canvas, canvas.clientWidth);
+        const ctx = canvas.getContext("2d");
+        const kesto = 1600;
+        const alku = performance.now();
+        const askel = (nyt) => {
+          const t = Math.min(1, (nyt - alku) / kesto);
+          ctx.clearRect(0, 0, px, px);
+          piirraPiirros(ctx, p, px, { edistyminen: 1 - (1 - t) ** 2 });
+          if (t < 1) animaatio = requestAnimationFrame(askel);
+        };
+        animaatio = requestAnimationFrame(askel);
+      }
+
+      function renderoiJono() {
+        const lista = jono();
+        if (!lista.length) {
+          sisalto.innerHTML = `<div class="tyhja"><h2 class="otsikko glitch" data-teksti="Jono on tyhjä">Jono on tyhjä</h2><p class="hiljainen">Uudet piirrokset ilmestyvät tänne automaattisesti.</p></div>`;
+          return;
+        }
+        if (!lista.some((p) => p.id === valittuId)) valittuId = lista[0].id;
+        const p = lista.find((x) => x.id === valittuId);
+        lista.forEach(simuloiAnalyysi);
+
+        if (!$("kortti")) {
+          sisalto.replaceChildren($("jono-pohja").content.cloneNode(true));
+          kytkeJono();
+        }
+
+        // Kortti
+        const kortti = $("kortti");
+        kortti.dataset.id = p.id;
+        kortti.classList.toggle("sumea", piilotettava(p));
+        $("paljasta").hidden = !piilotettava(p);
+        aiSiru($("ai-siru"), p);
+        $("nostettu-siru").hidden = !p.nostettu;
+        $("nosta").setAttribute("aria-pressed", String(p.nostettu));
+        $("tiedot").innerHTML = [
+          `<span class="siru">${tunnus(p.nro)}</span>`,
+          `<span class="siru">${LAHTEET[p.lahde] ?? p.lahde}</span>`,
+          `<span class="siru">klo ${kellonaika(p.luotu)}</span>`,
+          `<span class="siru">${p.kieli.toUpperCase()}</span>`,
+          `<span class="siru">${p.viivat.length} viivaa</span>`,
+        ].join("");
+        $("arvio").innerHTML = p.ai_arvio
+          ? `<strong>Tekoälyn arvio:</strong> ${p.ai_arvio.syy} Tekoäly ei koskaan hyväksy piirrosta itse.`
+          : `<strong>Tekoälyn arvio:</strong> analysoidaan… Voit moderoida jo nyt.`;
+
+        if (kortti.dataset.naytetty !== p.id) {
+          kortti.dataset.naytetty = p.id;
+          kortti.style.transform = "";
+          kortti.style.opacity = "";
+          toistaPiirtyminen(p);
+        } else {
+          piirraPienoiskuva($("kortti-canvas"), p, $("kortti-canvas").clientWidth);
+        }
+
+        // Jonolista
+        const otsikko = document.createElement("h2");
+        otsikko.className = "ylaotsikko hiljainen";
+        otsikko.textContent = `Jonossa ${lista.length}`;
+        $("jonolista").replaceChildren(
+          otsikko,
+          ...lista.map((x) => {
+            const rivi = document.createElement("button");
+            rivi.type = "button";
+            rivi.className = "rivi";
+            rivi.setAttribute("aria-current", String(x.id === valittuId));
+            const canvas = document.createElement("canvas");
+            if (piilotettava(x)) canvas.className = "sumea";
+            const teksti = document.createElement("span");
+            teksti.className = "rivi-teksti";
+            teksti.innerHTML = `<strong>${tunnus(x.nro)}</strong><span class="hiljainen">${LAHTEET[x.lahde] ?? x.lahde} · klo ${kellonaika(x.luotu)}</span>`;
+            const piste = document.createElement("span");
+            piste.className = "piste";
+            piste.style.background = x.ai_arvio ? LUOKAT[x.ai_arvio.luokka].vari : "var(--teksti-3)";
+            rivi.append(canvas, teksti, piste);
+            rivi.addEventListener("click", () => {
+              valittuId = x.id;
+              renderoi();
+            });
+            requestAnimationFrame(() => piirraPienoiskuva(canvas, x, canvas.clientWidth || 56));
+            return rivi;
+          }),
+        );
+      }
+
+      function kytkeJono() {
+        $("hyvaksy").addEventListener("click", () => paata("hyvaksytty"));
+        $("hylkaa").addEventListener("click", () => paata("hylatty"));
+        $("nosta").addEventListener("click", nosta);
+        $("toista").addEventListener("click", () => {
+          const p = valittu();
+          if (p) toistaPiirtyminen(p);
+        });
+        $("paljasta-nappi").addEventListener("click", () => {
+          paljastetut.add(valittuId);
+          renderoi();
+        });
+        kytkePyyhkaisy($("kortti"));
+        new ResizeObserver(() => {
+          const p = valittu();
+          if (p && $("kortti-canvas")) piirraPienoiskuva($("kortti-canvas"), p, $("kortti-canvas").clientWidth);
+        }).observe($("kortti"));
+      }
+
+      const valittu = () => piirrokset().find((p) => p.id === valittuId && p.tila === "jonossa");
+
+      function paata(tila, suunta = tila === "hyvaksytty" ? 1 : -1) {
+        const p = valittu();
+        if (!p) return;
+        const kortti = $("kortti");
+        kortti.classList.remove("vetaa");
+        kortti.style.transform = `translateX(${suunta * 120}%) rotate(${suunta * 12}deg)`;
+        kortti.style.opacity = "0";
+        const edellinen = { tila: p.tila, moderoitu: p.moderoitu ?? null };
+        paivitaPiirros(p.id, { tila, moderoitu: Date.now(), moderoija: "demo" });
+        ilmoita(`${tunnus(p.nro)} ${tila === "hyvaksytty" ? "hyväksytty" : "hylätty"}`, () => {
+          paivitaPiirros(p.id, edellinen);
+          valittuId = p.id;
+          renderoi();
+        });
+        valittuId = null;
+        setTimeout(renderoi, 220);
+      }
+
+      function nosta() {
+        const p = valittu();
+        if (!p) return;
+        paivitaPiirros(p.id, { nostettu: !p.nostettu });
+        renderoi();
+      }
+
+      function kytkePyyhkaisy(kortti) {
+        let alkuX = null;
+        let dx = 0;
+        kortti.addEventListener("pointerdown", (e) => {
+          if (e.target.closest("button")) return;
+          alkuX = e.clientX;
+          dx = 0;
+          kortti.classList.add("vetaa");
+          try {
+            kortti.setPointerCapture(e.pointerId);
+          } catch {}
+        });
+        kortti.addEventListener("pointermove", (e) => {
+          if (alkuX === null) return;
+          dx = e.clientX - alkuX;
+          kortti.style.transform = `translateX(${dx}px) rotate(${dx * 0.04}deg)`;
+          kortti.style.setProperty("--hyvaksy", Math.max(0, Math.min(1, dx / 120)));
+          kortti.style.setProperty("--hylkaa", Math.max(0, Math.min(1, -dx / 120)));
+        });
+        const lopeta = () => {
+          if (alkuX === null) return;
+          alkuX = null;
+          kortti.style.setProperty("--hyvaksy", 0);
+          kortti.style.setProperty("--hylkaa", 0);
+          if (dx > 120) paata("hyvaksytty");
+          else if (dx < -120) paata("hylatty");
+          else {
+            kortti.classList.remove("vetaa");
+            kortti.style.transform = "";
+          }
+        };
+        kortti.addEventListener("pointerup", lopeta);
+        kortti.addEventListener("pointercancel", lopeta);
+      }
+
+      addEventListener("keydown", (e) => {
+        if (valilehti !== "jono" || e.metaKey || e.ctrlKey || e.altKey) return;
+        const avain = e.key.toLowerCase();
+        if (avain === "arrowright" || avain === "a") paata("hyvaksytty");
+        else if (avain === "arrowleft" || avain === "h") paata("hylatty");
+        else if (avain === "n") nosta();
+        else if (avain === " ") {
+          e.preventDefault();
+          const p = valittu();
+          if (p) toistaPiirtyminen(p);
+        } else if (avain === "arrowdown" || avain === "arrowup") {
+          e.preventDefault();
+          const lista = jono();
+          const i = lista.findIndex((p) => p.id === valittuId);
+          const uusi = lista[Math.max(0, Math.min(lista.length - 1, i + (avain === "arrowdown" ? 1 : -1)))];
+          if (uusi) {
+            valittuId = uusi.id;
+            renderoi();
+          }
+        }
+      });
+
+      // --- Hyväksytyt / hylätyt ---
+
+      function renderoiGalleria() {
+        const hyvaksytyt = valilehti === "hyvaksytty";
+        const lista = piirrokset()
+          .filter((p) => (hyvaksytyt ? p.tila === "hyvaksytty" : p.tila === "hylatty" || p.tila === "piilotettu"))
+          .sort((a, b) => (b.moderoitu ?? b.luotu) - (a.moderoitu ?? a.luotu));
+        if (!lista.length) {
+          sisalto.innerHTML = `<div class="tyhja"><h2 class="otsikko">Ei piirroksia</h2></div>`;
+          return;
+        }
+        const ruudukko = document.createElement("section");
+        ruudukko.className = "galleria";
+        ruudukko.append(
+          ...lista.map((p) => {
+            const kortti = document.createElement("article");
+            kortti.className = "galleriakortti";
+            const canvas = document.createElement("canvas");
+            const ala = document.createElement("div");
+            ala.className = "ala";
+            const tila = hyvaksytyt
+              ? `<span class="hiljainen">Näytetty ${p.nayttokerrat}×</span>`
+              : `<span class="siru">${p.tila === "piilotettu" ? "Piilotettu" : "Hylätty"}</span>`;
+            ala.innerHTML = `<div class="tiedot"><strong>${tunnus(p.nro)}</strong>${tila}</div><div class="toiminnot"></div>`;
+            const toiminnot = ala.querySelector(".toiminnot");
+            if (hyvaksytyt) {
+              const tahti = document.createElement("button");
+              tahti.className = "ikoninappi";
+              tahti.type = "button";
+              tahti.title = p.nostettu ? "Poista nosto" : "Nosta suosikiksi";
+              tahti.setAttribute("aria-label", tahti.title);
+              tahti.setAttribute("aria-pressed", String(p.nostettu));
+              tahti.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" /></svg>`;
+              tahti.addEventListener("click", () => {
+                paivitaPiirros(p.id, { nostettu: !p.nostettu });
+                renderoi();
+              });
+              const piilota = document.createElement("button");
+              piilota.className = "nappi nappi--vaara";
+              piilota.type = "button";
+              piilota.textContent = "Piilota heti";
+              piilota.title = "Poistaa piirroksen screeniltä ja galleriasta välittömästi";
+              piilota.addEventListener("click", () => {
+                paivitaPiirros(p.id, { tila: "piilotettu", moderoitu: Date.now() });
+                ilmoita(`${tunnus(p.nro)} piilotettu`, () => {
+                  paivitaPiirros(p.id, { tila: "hyvaksytty" });
+                  renderoi();
+                });
+                renderoi();
+              });
+              toiminnot.append(tahti, piilota);
+            } else {
+              const palauta = document.createElement("button");
+              palauta.className = "nappi nappi--toissijainen";
+              palauta.type = "button";
+              palauta.textContent = "Palauta jonoon";
+              palauta.addEventListener("click", () => {
+                paivitaPiirros(p.id, { tila: "jonossa" });
+                renderoi();
+              });
+              toiminnot.append(palauta);
+            }
+            kortti.append(canvas, ala);
+            requestAnimationFrame(() => piirraPienoiskuva(canvas, p, canvas.clientWidth));
+            return kortti;
+          }),
+        );
+        sisalto.replaceChildren(ruudukko);
+      }
+
+      // --- Ilmoitus ---
+
+      let ilmoitusAjastin = 0;
+      let peruToiminto = null;
+
+      function ilmoita(teksti, peru = null) {
+        $("ilmoitus-teksti").textContent = teksti;
+        $("ilmoitus-peru").hidden = !peru;
+        peruToiminto = peru;
+        $("ilmoitus").hidden = false;
+        clearTimeout(ilmoitusAjastin);
+        ilmoitusAjastin = setTimeout(() => ($("ilmoitus").hidden = true), 5000);
+      }
+
+      $("ilmoitus-peru").addEventListener("click", () => {
+        peruToiminto?.();
+        $("ilmoitus").hidden = true;
+      });
+
+      // --- Yleinen ---
+
+      function renderoi() {
+        renderoiYla();
+        if (valilehti === "jono") {
+          renderoiJono();
+        } else {
+          cancelAnimationFrame(animaatio);
+          renderoiGalleria();
+        }
+      }
+
+      $("nollaa").addEventListener("click", () => {
+        nollaaDemo();
+        valittuId = null;
+        paljastetut.clear();
+        renderoi();
+      });
+
+      kuunteleMuutoksia(renderoi);
+      renderoi();
+    </script>
+  </body>
+</html>

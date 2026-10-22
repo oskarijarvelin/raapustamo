@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Raapustamo – prototyypit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="brand.css" />
+    <style>
+      body {
+        position: relative;
+        min-height: 100dvh;
+        overflow-x: hidden;
+        padding: 48px 24px 64px;
+      }
+
+      .supergrafiikka {
+        top: -40px;
+        right: 4%;
+        height: 110vh;
+        width: auto;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 880px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+
+      .logo {
+        width: 220px;
+      }
+
+      h1 {
+        font-size: clamp(48px, 9vw, 96px);
+      }
+
+      h1 span {
+        display: block;
+      }
+
+      .nakymat {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .nakyma {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 24px;
+        border-radius: var(--pyoristys-kortti);
+        background: var(--pinta-1);
+        box-shadow: inset 0 0 0 1px var(--pinta-3);
+      }
+
+      .nakyma h2 {
+        font-size: 28px;
+      }
+
+      .nakyma p {
+        flex: 1;
+        margin: 0;
+        color: var(--teksti-2);
+        font-size: 14px;
+      }
+
+      .linkit {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      a.nappi {
+        text-decoration: none;
+        min-height: 40px;
+        padding: 0 18px;
+        font-size: 13px;
+      }
+
+      .varit {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .vari {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--teksti-2);
+      }
+
+      .vari span:first-child {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--c);
+        box-shadow: inset 0 0 0 1px var(--viiva);
+      }
+
+      footer {
+        color: var(--teksti-3);
+        font-size: 13px;
+      }
+
+      footer button {
+        border: 0;
+        background: none;
+        color: var(--teksti-2);
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <img class="supergrafiikka" src="assets/latf-merkki-pysty.png" alt="" />
+    <main>
+      <img class="logo" src="assets/latf-logo-vaaka.png" alt="Lumo Art &amp; Tech Festival" />
+      <h1 class="otsikko">
+        <span>Raapustamo</span>
+        <span class="glitch glitch--hiljainen" data-teksti="Prototyypit">Prototyypit</span>
+      </h1>
+      <p class="ingressi">
+        Klikattavat ilmeprototyypit LA&amp;TF:n brändiohjeen mukaan. Näkymät jakavat saman demodatan selaimen kautta: piirrä, moderoi ja katso piirroksen ilmestyvän screenille. Avaa näkymät omiin välilehtiinsä.
+      </p>
+
+      <section class="nakymat">
+        <article class="nakyma">
+          <h2 class="otsikko">Piirrä</h2>
+          <p>Kävijän näkymä puhelimelle (QR) ja iPadille. Kioskitilassa käyttämättömyysnollaus ja kämmenen hylkäys Apple Pencilillä.</p>
+          <div class="linkit">
+            <a class="nappi nappi--ensisijainen" href="piirra.html">Puhelin</a>
+            <a class="nappi nappi--toissijainen" href="piirra.html?kiosk=ipad-1">iPad-kioski</a>
+          </div>
+        </article>
+        <article class="nakyma">
+          <h2 class="otsikko">Moderointi</h2>
+          <p>Jono tekoälyarvioineen, hyväksy/hylkää pyyhkäisyllä tai näppäimillä, nosto, piilotus ja näytön hätäpysäytys.</p>
+          <div class="linkit">
+            <a class="nappi nappi--ensisijainen" href="moderointi.html">Avaa</a>
+          </div>
+        </article>
+        <article class="nakyma">
+          <h2 class="otsikko">Näyttö</h2>
+          <p>LED-screen 4032 × 1152 px. Piirtymisanimaatio, glitch-siirtymät ja jonologiikka. Selaimessa skaalattu esikatselu, <code>?skaala=1</code> = natiivi.</p>
+          <div class="linkit">
+            <a class="nappi nappi--ensisijainen" href="naytto.html">Trio</a>
+            <a class="nappi nappi--toissijainen" href="naytto.html?layout=solo">Solo</a>
+            <a class="nappi nappi--toissijainen" href="naytto.html?layout=seina">Seinä</a>
+          </div>
+        </article>
+      </section>
+
+      <section>
+        <h2 class="ylaotsikko hiljainen">Piirrosmusteet</h2>
+        <div class="varit" id="varit"></div>
+      </section>
+
+      <footer>
+        Demodata tallentuu vain tähän selaimeen. <button type="button" id="nollaa">Nollaa demodata</button>
+      </footer>
+    </main>
+
+    <script type="module">
+      import { MUSTEET, nollaaDemo } from "./raapustamo.js";
+
+      document.getElementById("varit").replaceChildren(
+        ...MUSTEET.map((m) => {
+          const el = document.createElement("div");
+          el.className = "vari";
+          el.innerHTML = `<span style="--c:${m.hex}"></span><span>${m.fi}<br />${m.hex}</span>`;
+          return el;
+        }),
+      );
+      document.getElementById("nollaa").addEventListener("click", () => {
+        nollaaDemo();
+        document.getElementById("nollaa").textContent = "Nollattu ✓";
+      });
+    </script>
+  </body>
+</html>

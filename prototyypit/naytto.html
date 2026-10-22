@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Raapustamo – näyttö</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="brand.css" />
+    <style>
+      /* LED-screen: 4032 × 1152 px (21 × 6 kaappia à 192 px). Kaikki mitat lavan pikseleinä. */
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        cursor: none;
+      }
+
+      .lava {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4032px;
+        height: 1152px;
+        display: grid;
+        background: var(--musta);
+        transform-origin: 0 0;
+        overflow: hidden;
+      }
+
+      .lava[data-layout="trio"] {
+        grid-template-columns: repeat(3, 1152px) 576px;
+      }
+
+      .lava[data-layout="solo"] {
+        grid-template-columns: 2304px 1152px 576px;
+      }
+
+      .lava[data-layout="seina"] {
+        grid-template-columns: 3456px 576px;
+      }
+
+      .ruudukko {
+        display: grid;
+        grid-template-columns: repeat(6, 576px);
+        grid-template-rows: repeat(2, 576px);
+      }
+
+      /* --- Piirrosruutu --- */
+
+      .solu {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .solu + .solu,
+      .sivupalkki,
+      .ruudukko .solu {
+        box-shadow: inset 2px 0 0 var(--supergrafiikka);
+      }
+
+      .ruudukko .solu:nth-child(n + 7) {
+        box-shadow: inset 2px 2px 0 var(--supergrafiikka);
+      }
+
+      .solu canvas {
+        position: absolute;
+        inset: 0;
+      }
+
+      .solu-tiedot {
+        position: absolute;
+        left: 56px;
+        bottom: 44px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-weight: 600;
+        font-size: 30px;
+        color: var(--teksti-3);
+      }
+
+      .ruudukko .solu-tiedot {
+        left: 28px;
+        bottom: 22px;
+        font-size: 20px;
+      }
+
+      .uusi {
+        padding: 6px 20px;
+        border-radius: var(--pyoristys-pill);
+        background: var(--valkoinen);
+        color: var(--musta);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+
+      .ruudukko .uusi {
+        padding: 4px 14px;
+      }
+
+      .tyhja {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 16px;
+        text-align: center;
+        color: var(--teksti-3);
+      }
+
+      .tyhja .otsikko {
+        font-size: 72px;
+      }
+
+      .tyhja span:last-child {
+        font-size: 36px;
+        font-weight: 600;
+      }
+
+      /* --- Sivupalkki: logo, kehotus ja QR --- */
+
+      .sivupalkki {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 72px 64px 64px;
+      }
+
+      .sivupalkki .logo {
+        height: 360px;
+        width: auto;
+        align-self: flex-start;
+      }
+
+      .kehotus .otsikko {
+        font-size: 92px;
+      }
+
+      .kehotus span {
+        display: block;
+        margin-top: 14px;
+        color: var(--teksti-2);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        font-size: 40px;
+        text-transform: uppercase;
+      }
+
+      .qr {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .qr-laatikko {
+        width: 340px;
+        height: 340px;
+        padding: 22px;
+        border-radius: 36px;
+        background: var(--valkoinen);
+      }
+
+      .qr-laatikko canvas {
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+      }
+
+      .qr-osoite {
+        font-weight: 700;
+        font-size: 38px;
+        letter-spacing: 0.01em;
+      }
+
+      /* --- Solo: iso teksti --- */
+
+      .teksti-alue {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 48px;
+        padding: 0 140px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .teksti-alue .supergrafiikka {
+        right: 96px;
+        top: -120px;
+        height: 1392px;
+        width: auto;
+        max-width: none;
+      }
+
+      .teksti-alue > :not(.supergrafiikka) {
+        position: relative;
+        z-index: 1;
+      }
+
+      .teksti-alue .ylaotsikko {
+        font-size: 34px;
+        color: var(--teksti-2);
+      }
+
+      .teksti-alue .otsikko {
+        font-size: 128px;
+      }
+
+      .teksti-alue .otsikko span {
+        display: block;
+      }
+
+      .teksti-alue p {
+        margin: 0;
+        font-size: 40px;
+        font-weight: 600;
+        color: var(--teksti-2);
+      }
+
+      /* --- Hätäpysäytys --- */
+
+      .tauko {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 240px;
+        background: var(--musta);
+      }
+
+      .tauko .logo {
+        height: 640px;
+        width: auto;
+      }
+
+      .tauko .qr .otsikko {
+        font-size: 64px;
+      }
+
+      /* Esikatselu selaimessa: lava skaalataan ikkunaan. ?skaala=1 = natiivi 1:1-ulostulo. */
+      .esikatselu-info {
+        position: fixed;
+        right: 12px;
+        bottom: 10px;
+        color: var(--teksti-3);
+        font-size: 12px;
+        cursor: default;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="lava" id="lava"></div>
+    <div class="esikatselu-info" id="esikatselu-info" hidden></div>
+
+    <template id="sivupalkki-pohja">
+      <aside class="sivupalkki">
+        <img class="logo" src="assets/latf-logo-pysty.png" alt="Lumo Art &amp; Tech Festival" />
+        <div class="kehotus">
+          <h2 class="otsikko">Piirrä<br />sinäkin!</h2>
+          <span>Draw yours</span>
+        </div>
+        <div class="qr">
+          <div class="qr-laatikko"><canvas></canvas></div>
+          <span class="qr-osoite"></span>
+        </div>
+      </aside>
+    </template>
+
+    <template id="tauko-pohja">
+      <div class="tauko" id="tauko">
+        <img class="logo" src="assets/latf-logo-vaaka.png" alt="Lumo Art &amp; Tech Festival" />
+        <div class="qr">
+          <h2 class="otsikko">Raapustamo<br />palaa pian</h2>
+          <div class="qr-laatikko"><canvas></canvas></div>
+          <span class="qr-osoite"></span>
+        </div>
+      </div>
+    </template>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script type="module">
+      import { piirrokset, paivitaPiirros, kuunteleMuutoksia, piirraPiirros, tunnus, naytonTauko } from "./raapustamo.js";
+
+      const parametrit = new URLSearchParams(location.search);
+      const LAYOUT = ["trio", "solo", "seina"].includes(parametrit.get("layout")) ? parametrit.get("layout") : "trio";
+      const VAIHTO = (Number(parametrit.get("vaihto")) || 12) * 1000;
+      const NAYTA_QR = parametrit.get("qr") !== "0";
+      const QR_URL = parametrit.get("qr-url") ?? new URL("piirra.html", location.href).href;
+      const OSOITE = parametrit.get("osoite") ?? "raapustamo.fi";
+      const SKAALA = Number(parametrit.get("skaala")) || null;
+
+      const PIIRTYMINEN = 4200;
+      const ULOS = 380;
+      const MIKRO = 180;
+
+      const lava = document.getElementById("lava");
+      lava.dataset.layout = LAYOUT;
+
+      // --- Skaalaus ---
+
+      function sovita() {
+        const s = SKAALA ?? Math.min(innerWidth / 4032, innerHeight / 1152);
+        const x = SKAALA ? 0 : (innerWidth - 4032 * s) / 2;
+        const y = SKAALA ? 0 : (innerHeight - 1152 * s) / 2;
+        lava.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+        const info = document.getElementById("esikatselu-info");
+        info.hidden = s === 1;
+        info.textContent = `Esikatselu ${Math.round(s * 100)} % · 4032 × 1152 · ?layout=trio|solo|seina · ?skaala=1`;
+      }
+      addEventListener("resize", sovita);
+      sovita();
+
+      // --- QR ---
+
+      function piirraQr(canvas) {
+        const qr = qrcode(0, "M");
+        qr.addData(QR_URL);
+        qr.make();
+        const n = qr.getModuleCount();
+        const koko = n * 10;
+        canvas.width = koko;
+        canvas.height = koko;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, koko, koko);
+        ctx.fillStyle = "#000";
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(c * 10, r * 10, 10, 10);
+      }
+
+      function lisaaSivupalkki() {
+        if (!NAYTA_QR) return;
+        const palkki = document.getElementById("sivupalkki-pohja").content.firstElementChild.cloneNode(true);
+        piirraQr(palkki.querySelector("canvas"));
+        palkki.querySelector(".qr-osoite").textContent = OSOITE;
+        lava.append(palkki);
+      }
+
+      // --- Ruudut ---
+
+      function uusiSolu(koko) {
+        const el = document.createElement("div");
+        el.className = "solu";
+        el.style.width = `${koko}px`;
+        el.style.height = `${koko}px`;
+        const canvas = document.createElement("canvas");
+        canvas.width = koko;
+        canvas.height = koko;
+        const tiedot = document.createElement("div");
+        tiedot.className = "solu-tiedot";
+        const tyhja = document.createElement("div");
+        tyhja.className = "tyhja";
+        tyhja.innerHTML = `<span class="otsikko">Sinun piirroksesi<br />tähän?</span><span>Your drawing here?</span>`;
+        tyhja.hidden = true;
+        el.append(canvas, tiedot, tyhja);
+        const puskuri = document.createElement("canvas");
+        puskuri.width = koko;
+        puskuri.height = koko;
+        return {
+          el,
+          koko,
+          ctx: canvas.getContext("2d"),
+          canvas,
+          puskuri,
+          pctx: puskuri.getContext("2d"),
+          tiedot,
+          tyhja,
+          piirros: null,
+          seuraava: null,
+          uusi: false,
+          vaihe: "tyhja",
+          alku: 0,
+          seuraavaMikro: 0,
+        };
+      }
+
+      const solut = [];
+
+      if (LAYOUT === "trio") {
+        for (let i = 0; i < 3; i++) solut.push(uusiSolu(1152));
+        lava.append(...solut.map((s) => s.el));
+      } else if (LAYOUT === "solo") {
+        const teksti = document.createElement("section");
+        teksti.className = "teksti-alue";
+        teksti.innerHTML = `
+          <img class="supergrafiikka" src="assets/latf-merkki-pysty.png" alt="" />
+          <span class="ylaotsikko">Lumo Art &amp; Tech Festival · Raapustamo</span>
+          <h1 class="otsikko"><span>Vieraskirja on paperia.</span><span class="glitch glitch--hiljainen" data-teksti="…tai 30 neliötä valoa.">…tai 30 neliötä valoa.</span></h1>
+          <p>A guestbook is paper… or 30 m² of light.</p>`;
+        solut.push(uusiSolu(1152));
+        lava.append(teksti, solut[0].el);
+      } else {
+        const ruudukko = document.createElement("div");
+        ruudukko.className = "ruudukko";
+        for (let i = 0; i < 12; i++) solut.push(uusiSolu(576));
+        ruudukko.append(...solut.map((s) => s.el));
+        lava.append(ruudukko);
+      }
+      lisaaSivupalkki();
+
+      // --- Glitch: vaakasuorat kaistat siirtyvät sivuttain ---
+
+      function glitch(ctx, lahde, voima) {
+        const { width: w, height: h } = lahde;
+        ctx.clearRect(0, 0, w, h);
+        ctx.globalAlpha = 1 - Math.max(0, voima - 0.6) * 2.5;
+        let y = 0;
+        while (y < h) {
+          const kaista = 6 + Math.floor(Math.random() * 70);
+          const siirto = Math.random() < 0.4 ? (Math.random() - 0.5) * 2 * voima * w * 0.14 : 0;
+          ctx.drawImage(lahde, 0, y, w, kaista, siirto, y, w, kaista);
+          y += kaista;
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      const pehmea = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+      function piirraSisalto(ctx, s, edistyminen) {
+        const reuna = s.koko * 0.07;
+        ctx.save();
+        ctx.translate(reuna, reuna);
+        // Ohuet viivat katoavat LED-screenillä: vähintään 8 px leveä viiva (≈ 2 cm).
+        piirraPiirros(ctx, s.piirros, s.koko - reuna * 2, { edistyminen, minPx: 8 });
+        ctx.restore();
+      }
+
+      function paivitaTiedot(s) {
+        s.tyhja.hidden = Boolean(s.piirros);
+        s.tiedot.replaceChildren();
+        if (!s.piirros) return;
+        const nro = document.createElement("span");
+        nro.textContent = tunnus(s.piirros.nro);
+        s.tiedot.append(nro);
+        if (s.uusi) {
+          const uusi = document.createElement("span");
+          uusi.className = "uusi";
+          uusi.textContent = "Uusi";
+          s.tiedot.append(uusi);
+        }
+      }
+
+      function aloitaPiirtyminen(s, nyt) {
+        s.piirros = s.seuraava;
+        s.seuraava = null;
+        s.vaihe = s.piirros ? "piirtyy" : "tyhja";
+        s.alku = nyt;
+        s.ctx.clearRect(0, 0, s.koko, s.koko);
+        paivitaTiedot(s);
+      }
+
+      function paivitaSolu(s, nyt) {
+        const t = nyt - s.alku;
+        if (s.vaihe === "ulos") {
+          const v = Math.min(1, t / ULOS);
+          glitch(s.ctx, s.puskuri, v);
+          if (v >= 1) aloitaPiirtyminen(s, nyt);
+        } else if (s.vaihe === "piirtyy") {
+          const v = Math.min(1, t / PIIRTYMINEN);
+          s.ctx.clearRect(0, 0, s.koko, s.koko);
+          piirraSisalto(s.ctx, s, pehmea(v));
+          if (v >= 1) {
+            s.pctx.clearRect(0, 0, s.koko, s.koko);
+            s.pctx.drawImage(s.canvas, 0, 0);
+            s.vaihe = "valmis";
+            s.seuraavaMikro = nyt + 6000 + Math.random() * 14000;
+          }
+        } else if (s.vaihe === "valmis" && nyt > s.seuraavaMikro) {
+          s.vaihe = "mikro";
+          s.alku = nyt;
+        } else if (s.vaihe === "mikro") {
+          if (t < MIKRO) {
+            glitch(s.ctx, s.puskuri, 0.2);
+          } else {
+            s.ctx.clearRect(0, 0, s.koko, s.koko);
+            s.ctx.drawImage(s.puskuri, 0, 0);
+            s.vaihe = "valmis";
+            s.seuraavaMikro = nyt + 6000 + Math.random() * 14000;
+          }
+        }
+      }
+
+      function kehys(nyt) {
+        for (const s of solut) paivitaSolu(s, nyt);
+        requestAnimationFrame(kehys);
+      }
+      requestAnimationFrame(kehys);
+
+      // --- Jonologiikka ---
+
+      // 1) Näyttämättömät ensin (vanhin ensin), 2) nostetut useammin, 3) vähiten / pisimpään sitten näytetyt.
+      function seuraavaPiirros(poissulje) {
+        const painotettu = (p) => p.nayttokerrat / (p.nostettu ? 2 : 1);
+        return piirrokset()
+          .filter((p) => p.tila === "hyvaksytty" && !poissulje.has(p.id))
+          .sort((a, b) => {
+            const uusiA = a.nayttokerrat === 0;
+            const uusiB = b.nayttokerrat === 0;
+            if (uusiA !== uusiB) return uusiA ? -1 : 1;
+            if (uusiA) return a.luotu - b.luotu;
+            return painotettu(a) - painotettu(b) || (a.viimeksi_naytetty ?? 0) - (b.viimeksi_naytetty ?? 0);
+          })[0];
+      }
+
+      function vaihdaSeuraavaan(s, pakota = false) {
+        const naytolla = new Set(solut.filter((x) => x !== s).flatMap((x) => [x.piirros?.id, x.seuraava?.id]).filter(Boolean));
+        const p = seuraavaPiirros(naytolla);
+        if (!p && !pakota) return;
+        s.seuraava = p ?? null;
+        s.uusi = p ? p.nayttokerrat === 0 : false;
+        if (p) paivitaPiirros(p.id, { nayttokerrat: p.nayttokerrat + 1, viimeksi_naytetty: Date.now() });
+        if (s.vaihe === "tyhja") aloitaPiirtyminen(s, performance.now());
+        else {
+          if (s.vaihe === "piirtyy") {
+            // Kesken piirtymisen vaihdettaessa glitchataan ulos se, mitä ruudussa juuri nyt näkyy.
+            s.pctx.clearRect(0, 0, s.koko, s.koko);
+            s.pctx.drawImage(s.canvas, 0, 0);
+          }
+          s.vaihe = "ulos";
+          s.alku = performance.now();
+        }
+      }
+
+      function kierros() {
+        if (naytonTauko()) return;
+        const kohteet = LAYOUT === "seina" ? [...solut].sort(() => Math.random() - 0.5).slice(0, 3) : solut;
+        kohteet.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s), i * 700));
+      }
+
+      // --- Muutokset moderoinnista ---
+
+      let taukoEl = null;
+
+      function tarkistaTauko() {
+        const tauko = naytonTauko();
+        if (tauko && !taukoEl) {
+          taukoEl = document.getElementById("tauko-pohja").content.firstElementChild.cloneNode(true);
+          piirraQr(taukoEl.querySelector("canvas"));
+          taukoEl.querySelector(".qr-osoite").textContent = OSOITE;
+          lava.append(taukoEl);
+        } else if (!tauko && taukoEl) {
+          taukoEl.remove();
+          taukoEl = null;
+          kierros();
+        }
+      }
+
+      kuunteleMuutoksia(() => {
+        tarkistaTauko();
+        // Piilotettu tai hylätty piirros poistuu screeniltä välittömästi.
+        const tilat = new Map(piirrokset().map((p) => [p.id, p.tila]));
+        for (const s of solut) {
+          if (s.piirros && tilat.get(s.piirros.id) !== "hyvaksytty") vaihdaSeuraavaan(s, true);
+          else if (!s.piirros && s.vaihe === "tyhja") vaihdaSeuraavaan(s);
+        }
+      });
+
+      tarkistaTauko();
+      solut.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s, true), 300 + i * (LAYOUT === "seina" ? 250 : 700)));
+      setInterval(kierros, VAIHTO);
+    </script>
+  </body>
+</html>

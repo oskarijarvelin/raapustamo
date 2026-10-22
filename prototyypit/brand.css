@@ -1,0 +1,311 @@
+/*
+ * Raapustamo – brändi-ilme (LA&TF "Glitch in the Reality" -brändiohjeistuksen mukaan)
+ *
+ * - Perusvärit: puhdas musta ja valkoinen. Oulu 2026 -värit vain korostuksiin.
+ * - Otsikot: Oulu2026 Bold (versaalit), leipäteksti: Poppins. Varafontti: Arial.
+ * - Muotokieli: pyöreät "pill"-napit ja ympyrät, isot logon kirjaimet supergrafiikkana (#212121).
+ *
+ * Oulu 2026 -värikoodit on poimittu brändiohjeen PDF:stä – varmistetaan tuotannolta.
+ */
+
+@font-face {
+  font-family: "Oulu2026";
+  font-weight: 700;
+  font-display: swap;
+  /* TODO: kun fonttitiedostot saadaan tuotannolta, lisää: url("assets/fonts/Oulu2026-Bold.woff2") format("woff2") */
+  src: local("Oulu2026 Bold"), local("Oulu2026-Bold");
+}
+@font-face {
+  font-family: "Oulu2026";
+  font-weight: 500;
+  font-display: swap;
+  src: local("Oulu2026 Medium"), local("Oulu2026-Medium");
+}
+
+:root {
+  /* LA&TF */
+  --musta: #000000;
+  --valkoinen: #ffffff;
+  --supergrafiikka: #212121;
+
+  /* Oulu 2026 */
+  --o26-yonsini: #002d58;
+  --o26-metsa: #185636;
+  --o26-sini: #4d55dc;
+  --o26-vaalea: #e4e4e4;
+  --o26-oranssi: #f47226;
+  --o26-puna: #f54653;
+  --o26-roosa: #ce8da7;
+  --o26-hiekka: #d6d4ca;
+
+  /* Käyttöliittymän harmaat mustan päällä */
+  --pinta-1: #0d0d0d;
+  --pinta-2: #161616;
+  --pinta-3: #212121;
+  --viiva: #2e2e2e;
+  --teksti: #ffffff;
+  --teksti-2: #a3a3a3;
+  --teksti-3: #6f6f6f;
+
+  /* Merkitykset */
+  --korostus: var(--o26-sini);
+  --ok: var(--o26-sini);
+  --varoitus: var(--o26-oranssi);
+  --vaara: var(--o26-puna);
+
+  --font-otsikko: "Oulu2026", "Poppins", Arial, sans-serif;
+  --font-teksti: "Poppins", Arial, sans-serif;
+
+  --pyoristys-pill: 999px;
+  --pyoristys-kortti: 28px;
+  --kosketus: 48px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--musta);
+  color: var(--teksti);
+  font-family: var(--font-teksti);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* --- Typografia --- */
+
+.otsikko {
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.98;
+  margin: 0;
+}
+
+.ylaotsikko {
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ingressi {
+  font-weight: 600;
+  color: var(--teksti);
+}
+
+.hiljainen {
+  color: var(--teksti-2);
+}
+
+/* --- Napit --- */
+
+.nappi {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--kosketus);
+  padding: 0 28px;
+  border: 2px solid transparent;
+  border-radius: var(--pyoristys-pill);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+
+.nappi:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.nappi:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.nappi:focus-visible,
+.ikoninappi:focus-visible,
+.vari:focus-visible {
+  outline: 3px solid var(--korostus);
+  outline-offset: 3px;
+}
+
+.nappi--ensisijainen {
+  background: var(--valkoinen);
+  color: var(--musta);
+}
+
+.nappi--toissijainen {
+  background: transparent;
+  border-color: var(--valkoinen);
+  color: var(--valkoinen);
+}
+
+.nappi--haamu {
+  background: transparent;
+  color: var(--teksti-2);
+}
+
+.nappi--vaara {
+  background: transparent;
+  border-color: var(--vaara);
+  color: var(--vaara);
+}
+
+.nappi--iso {
+  min-height: 60px;
+  padding: 0 36px;
+  font-size: 17px;
+}
+
+.ikoninappi {
+  display: inline-grid;
+  place-items: center;
+  width: var(--kosketus);
+  height: var(--kosketus);
+  border: 0;
+  border-radius: 50%;
+  background: var(--pinta-3);
+  color: var(--valkoinen);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ikoninappi:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ikoninappi svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* --- Sirut ja merkit --- */
+
+.siru {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--pinta-3);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.siru--valkoinen {
+  background: var(--valkoinen);
+  color: var(--musta);
+}
+
+.piste {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* --- Logot --- */
+
+.logo-merkki {
+  height: 22px;
+  width: auto;
+}
+
+/* --- Supergrafiikka: logon kirjaimet isona taustalla --- */
+
+.supergrafiikka {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.13;
+  z-index: 0;
+}
+
+/* --- Glitch-teksti: brändin "glitch" positiivisena efektinä --- */
+
+.glitch {
+  position: relative;
+  display: inline-block;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-teksti);
+  position: absolute;
+  inset: 0;
+  color: inherit;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.glitch::before {
+  animation: glitch-a 5s infinite steps(1);
+}
+
+.glitch::after {
+  animation: glitch-b 5s infinite steps(1);
+}
+
+@keyframes glitch-a {
+  0%, 86%, 100% { opacity: 0; transform: none; clip-path: none; }
+  87% { opacity: 1; transform: translateX(-0.06em); clip-path: inset(12% 0 58% 0); }
+  89% { opacity: 1; transform: translateX(0.09em); clip-path: inset(62% 0 8% 0); }
+  91% { opacity: 1; transform: translateX(-0.03em); clip-path: inset(34% 0 40% 0); }
+  93% { opacity: 0; }
+}
+
+@keyframes glitch-b {
+  0%, 87%, 100% { opacity: 0; transform: none; clip-path: none; }
+  88% { opacity: 0.7; transform: translateX(0.05em); clip-path: inset(70% 0 4% 0); }
+  90% { opacity: 0.7; transform: translateX(-0.08em); clip-path: inset(4% 0 76% 0); }
+  92% { opacity: 0; }
+}
+
+.glitch--hiljainen {
+  color: var(--teksti-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch::before,
+  .glitch::after {
+    animation: none;
+  }
+}

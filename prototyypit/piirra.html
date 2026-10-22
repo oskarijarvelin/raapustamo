@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#000000" />
+    <title>Raapustamo – piirrä</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="brand.css" />
+    <style>
+      html,
+      body {
+        height: 100%;
+        overscroll-behavior: none;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+
+      .ylapalkki {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 16px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .tuotemerkki {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .tuotemerkki .erotin {
+        width: 1px;
+        height: 18px;
+        background: var(--viiva);
+      }
+
+      .kielinappi {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .nakyma {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+      }
+
+      /* --- Aloitus --- */
+
+      #aloitus {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 24px;
+        padding: 24px 20px 32px;
+        overflow: hidden;
+      }
+
+      #aloitus .supergrafiikka {
+        top: -4%;
+        right: 6%;
+        height: 108%;
+        width: auto;
+        max-width: none;
+      }
+
+      #aloitus > :not(.supergrafiikka) {
+        position: relative;
+        z-index: 1;
+      }
+
+      .aloitus-otsikko {
+        font-size: clamp(40px, 11vw, 88px);
+      }
+
+      .aloitus-otsikko span {
+        display: block;
+      }
+
+      .aloitus-ingressi {
+        max-width: 32ch;
+        margin: 0;
+        font-size: 17px;
+      }
+
+      /* --- Piirtäminen --- */
+
+      #piirto {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 16px;
+        padding: 0 16px 16px;
+      }
+
+      .alusta-alue {
+        container-type: size;
+        display: grid;
+        place-items: center;
+        min-height: 0;
+      }
+
+      .alusta-kehys {
+        position: relative;
+        width: min(100cqw, 100cqh);
+        aspect-ratio: 1;
+        border-radius: 20px;
+        background: var(--musta);
+        box-shadow: inset 0 0 0 1px var(--viiva);
+        overflow: hidden;
+      }
+
+      .alusta-kehys canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #pinta {
+        touch-action: none;
+        cursor: crosshair;
+      }
+
+      .vihje {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        color: var(--teksti-3);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .tyokalut {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        max-width: 560px;
+        justify-self: center;
+      }
+
+      .rivi {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .vari {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 50%;
+        background: var(--c);
+        cursor: pointer;
+        flex: none;
+        touch-action: manipulation;
+        transition: transform 120ms ease;
+      }
+
+      .vari[aria-pressed="true"] {
+        box-shadow: 0 0 0 3px var(--musta), 0 0 0 5px var(--valkoinen);
+        transform: scale(1.08);
+      }
+
+      .segmentit {
+        display: flex;
+        flex: 1;
+        padding: 4px;
+        gap: 4px;
+        border-radius: var(--pyoristys-pill);
+        background: var(--pinta-2);
+      }
+
+      .segmentit button {
+        flex: 1;
+        min-height: 40px;
+        border: 0;
+        border-radius: var(--pyoristys-pill);
+        background: transparent;
+        color: var(--teksti-2);
+        font-family: var(--font-otsikko);
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .segmentit button[aria-pressed="true"] {
+        background: var(--valkoinen);
+        color: var(--musta);
+      }
+
+      .koot {
+        display: flex;
+        gap: 8px;
+      }
+
+      .koko {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border: 0;
+        border-radius: 50%;
+        background: var(--pinta-2);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .koko::after {
+        content: "";
+        width: var(--d);
+        height: var(--d);
+        border-radius: 50%;
+        background: var(--teksti-2);
+      }
+
+      .koko[aria-pressed="true"] {
+        background: var(--valkoinen);
+      }
+
+      .koko[aria-pressed="true"]::after {
+        background: var(--musta);
+      }
+
+      .toiminnot {
+        display: flex;
+        gap: 8px;
+      }
+
+      .ikoninappi.varmista {
+        background: var(--vaara);
+      }
+
+      .laheta {
+        width: 100%;
+      }
+
+      /* iPad vaaka / iso näyttö: työkalut sivupaneeliin */
+      @media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+        #piirto {
+          grid-template-rows: minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr) 340px;
+          gap: 32px;
+          padding: 8px 32px 32px;
+        }
+
+        .tyokalut {
+          align-self: center;
+          gap: 20px;
+        }
+
+        .varit {
+          display: grid;
+          grid-template-columns: repeat(4, 56px);
+          justify-content: space-between;
+          row-gap: 16px;
+        }
+
+        .vari {
+          width: 56px;
+          height: 56px;
+        }
+
+        .segmentit {
+          flex-wrap: wrap;
+          border-radius: 28px;
+        }
+
+        .segmentit button {
+          flex: 1 1 40%;
+          min-height: 52px;
+        }
+      }
+
+      /* --- Kiitos --- */
+
+      #kiitos {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        padding: 24px 24px 40px;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      #kiitos .supergrafiikka {
+        left: 6%;
+        bottom: -10%;
+        height: 90%;
+        width: auto;
+        max-width: none;
+        transform: rotate(180deg);
+      }
+
+      #kiitos > :not(.supergrafiikka) {
+        position: relative;
+        z-index: 1;
+      }
+
+      .kiitos-otsikko {
+        font-size: clamp(56px, 18vw, 120px);
+      }
+
+      .kiitos-esikatselu {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: var(--musta);
+        box-shadow: 0 0 0 2px var(--pinta-3);
+      }
+
+      .kiitos-teksti {
+        max-width: 34ch;
+        margin: 0;
+      }
+
+      /* --- Vahvistus --- */
+
+      dialog {
+        width: min(100% - 24px, 480px);
+        max-height: calc(100dvh - 24px);
+        margin: auto auto 12px;
+        padding: 28px 24px 24px;
+        border: 0;
+        border-radius: var(--pyoristys-kortti);
+        background: var(--pinta-2);
+        color: var(--teksti);
+      }
+
+      @media (min-width: 700px) {
+        dialog {
+          margin: auto;
+        }
+      }
+
+      dialog::backdrop {
+        background: rgb(0 0 0 / 0.7);
+      }
+
+      .vahvistus {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .vahvistus-yla {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .vahvistus-yla canvas {
+        width: 96px;
+        height: 96px;
+        flex: none;
+        border-radius: 16px;
+        background: var(--musta);
+        box-shadow: inset 0 0 0 1px var(--viiva);
+      }
+
+      .vahvistus-otsikko {
+        font-size: clamp(28px, 8vw, 36px);
+      }
+
+      .vahvistus p {
+        margin: 0;
+        color: var(--teksti-2);
+        font-size: 15px;
+      }
+
+      .valinta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: var(--kosketus);
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .valinta input {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 28px;
+        height: 28px;
+        margin: 0;
+        border: 2px solid var(--valkoinen);
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        flex: none;
+        cursor: pointer;
+      }
+
+      .valinta input:checked {
+        background: var(--valkoinen);
+      }
+
+      .valinta input:checked::after {
+        content: "";
+        width: 12px;
+        height: 7px;
+        border: solid var(--musta);
+        border-width: 0 0 3px 3px;
+        transform: translateY(-2px) rotate(-45deg);
+      }
+
+      .valinta input:focus-visible {
+        outline: 3px solid var(--korostus);
+        outline-offset: 3px;
+      }
+
+      .vahvistus-napit {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* --- Kioskin käyttämättömyyslaskuri --- */
+
+      .laskuri {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        padding: 24px;
+        background: rgb(0 0 0 / 0.88);
+        text-align: center;
+      }
+
+      .laskuri-numero {
+        font-size: 160px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="ylapalkki">
+      <div class="tuotemerkki">
+        <img class="logo-merkki" src="assets/latf-merkki.png" alt="Lumo Art &amp; Tech Festival" />
+        <span class="erotin" aria-hidden="true"></span>
+        <span class="ylaotsikko">Raapustamo</span>
+      </div>
+      <button class="siru kielinappi" id="kielinappi" type="button">EN</button>
+    </header>
+
+    <!-- Aloitus -->
+    <main id="aloitus" class="nakyma">
+      <img class="supergrafiikka" src="assets/latf-merkki-pysty.png" alt="" />
+      <span class="ylaotsikko hiljainen" data-i18n="ylaotsikko"></span>
+      <h1 class="otsikko aloitus-otsikko">
+        <span data-i18n="otsikko1"></span>
+        <span class="glitch glitch--hiljainen" data-i18n="otsikko2"></span>
+      </h1>
+      <p class="aloitus-ingressi ingressi" data-i18n="ingressi"></p>
+      <button class="nappi nappi--ensisijainen nappi--iso" id="aloita" type="button" data-i18n="aloita"></button>
+    </main>
+
+    <!-- Piirtäminen -->
+    <main id="piirto" class="nakyma" hidden>
+      <div class="alusta-alue">
+        <div class="alusta-kehys">
+          <canvas id="kerros"></canvas>
+          <canvas id="pinta"></canvas>
+          <div class="vihje" id="vihje" data-i18n="vihje"></div>
+        </div>
+      </div>
+
+      <div class="tyokalut">
+        <div class="rivi varit" id="varit" role="group"></div>
+        <div class="rivi">
+          <div class="segmentit" id="siveltimet" role="group"></div>
+        </div>
+        <div class="rivi">
+          <div class="koot" id="koot" role="group"></div>
+          <div class="toiminnot">
+            <button class="ikoninappi" id="kumoa" type="button" data-i18n-aria="kumoa">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+            </button>
+            <button class="ikoninappi" id="uudelleen" type="button" data-i18n-aria="uudelleen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+            </button>
+            <button class="ikoninappi" id="tyhjenna" type="button" data-i18n-aria="tyhjenna">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></svg>
+            </button>
+          </div>
+        </div>
+        <button class="nappi nappi--ensisijainen nappi--iso laheta" id="laheta" type="button" data-i18n="laheta" disabled></button>
+      </div>
+    </main>
+
+    <!-- Kiitos -->
+    <main id="kiitos" class="nakyma" hidden>
+      <img class="supergrafiikka" src="assets/latf-merkki-pysty.png" alt="" />
+      <canvas class="kiitos-esikatselu" id="kiitos-esikatselu"></canvas>
+      <h1 class="otsikko kiitos-otsikko glitch" data-i18n="kiitosOtsikko"></h1>
+      <span class="ylaotsikko hiljainen" data-i18n="kiitosAli"></span>
+      <p class="kiitos-teksti" data-i18n="kiitosTeksti"></p>
+      <span class="siru"><span class="hiljainen" data-i18n="tunnusOtsikko"></span> <strong id="kiitos-tunnus"></strong></span>
+      <button class="nappi nappi--ensisijainen nappi--iso" id="uusi" type="button" data-i18n="uusi"></button>
+    </main>
+
+    <dialog id="vahvistus">
+      <form class="vahvistus" method="dialog">
+        <h2 class="otsikko vahvistus-otsikko" data-i18n="vahvistusOtsikko"></h2>
+        <div class="vahvistus-yla">
+          <canvas id="vahvistus-esikatselu"></canvas>
+          <p data-i18n="vahvistusTeksti"></p>
+        </div>
+        <label class="valinta">
+          <input type="checkbox" id="ehdot" />
+          <span data-i18n="ehdot"></span>
+        </label>
+        <div class="vahvistus-napit">
+          <button class="nappi nappi--ensisijainen nappi--iso" id="vahvista" type="button" data-i18n="lahetaVahvistus" disabled></button>
+          <button class="nappi nappi--haamu" value="peru" data-i18n="jatka"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="laskuri" id="laskuri" hidden>
+      <span class="ylaotsikko hiljainen" data-i18n="idleOtsikko"></span>
+      <span class="otsikko laskuri-numero" id="laskuri-numero">10</span>
+      <p class="hiljainen" data-i18n="idleTeksti"></p>
+      <button class="nappi nappi--ensisijainen nappi--iso" id="laskuri-jatka" type="button" data-i18n="idleJatka"></button>
+    </div>
+
+    <script type="module">
+      import { MUSTEET, SIVELTIMET, KOOT, piirraViiva, piirraPiirros, sovitaCanvas, lisaaPiirros, tunnus } from "./raapustamo.js";
+
+      const TEKSTIT = {
+        fi: {
+          ylaotsikko: "Lumo Art & Tech Festival",
+          otsikko1: "Vieraskirja on paperia.",
+          otsikko2: "…tai 30 neliötä valoa.",
+          ingressi: "Piirrä terveiset, kuva tai puumerkki. Raapustukset näytetään festivaalin 10,5-metrisellä LED-screenillä.",
+          aloita: "Aloita piirtäminen",
+          vihje: "Piirrä tähän",
+          kumoa: "Kumoa",
+          uudelleen: "Tee uudelleen",
+          tyhjenna: "Tyhjennä",
+          varmista: "Tyhjennetäänkö? Paina uudelleen",
+          laheta: "Lähetä",
+          s: "Ohut",
+          m: "Keskikokoinen",
+          l: "Paksu",
+          vahvistusOtsikko: "Lähetetäänkö?",
+          vahvistusTeksti: "Piirros näytetään moderoinnin jälkeen festivaalin LED-screenillä ja festivaalin jälkeen verkkogalleriassa. Älä piirrä nimiä tai yhteystietoja.",
+          ehdot: "Hyväksyn käyttöehdot",
+          lahetaVahvistus: "Lähetä piirros",
+          jatka: "Jatka piirtämistä",
+          kiitosOtsikko: "Kiitos!",
+          kiitosAli: "Todellisuus säröili hieman.",
+          kiitosTeksti: "Piirroksesi on jonossa ja näkyy isolla screenillä moderoinnin jälkeen. Pidä silmällä screeniä!",
+          tunnusOtsikko: "Tunnus",
+          uusi: "Piirrä uusi",
+          idleOtsikko: "Oletko vielä siellä?",
+          idleTeksti: "Piirros tyhjennetään hetken kuluttua.",
+          idleJatka: "Jatka piirtämistä",
+        },
+        en: {
+          ylaotsikko: "Lumo Art & Tech Festival",
+          otsikko1: "A guestbook is paper.",
+          otsikko2: "…or 30 m² of light.",
+          ingressi: "Draw a greeting, a picture or your mark. Drawings are shown on the festival's 10.5-metre LED screen.",
+          aloita: "Start drawing",
+          vihje: "Draw here",
+          kumoa: "Undo",
+          uudelleen: "Redo",
+          tyhjenna: "Clear",
+          varmista: "Clear? Tap again",
+          laheta: "Send",
+          s: "Thin",
+          m: "Medium",
+          l: "Thick",
+          vahvistusOtsikko: "Send it?",
+          vahvistusTeksti: "After moderation, your drawing is shown on the festival LED screen and, after the festival, in an online gallery. Please don't draw names or contact details.",
+          ehdot: "I accept the terms of use",
+          lahetaVahvistus: "Send drawing",
+          jatka: "Keep drawing",
+          kiitosOtsikko: "Thanks!",
+          kiitosAli: "Reality glitched a little.",
+          kiitosTeksti: "Your drawing is in the queue and will appear on the big screen after moderation. Keep an eye on the screen!",
+          tunnusOtsikko: "ID",
+          uusi: "Draw another",
+          idleOtsikko: "Still there?",
+          idleTeksti: "Your drawing will be cleared shortly.",
+          idleJatka: "Keep drawing",
+        },
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const parametrit = new URLSearchParams(location.search);
+      const kioski = parametrit.get("kiosk");
+      let kieli = (parametrit.get("kieli") ?? navigator.language ?? "fi").startsWith("fi") ? "fi" : "en";
+      const T = () => TEKSTIT[kieli];
+
+      const tila = { vari: MUSTEET[0].hex, sivellin: "tussi", koko: "m", viivat: [], kumotut: [] };
+      let nakyma = "aloitus";
+
+      // --- Kieli ---
+
+      function kaanna() {
+        document.documentElement.lang = kieli;
+        for (const el of document.querySelectorAll("[data-i18n]")) {
+          el.textContent = T()[el.dataset.i18n];
+          if (el.classList.contains("glitch")) el.dataset.teksti = el.textContent;
+        }
+        for (const el of document.querySelectorAll("[data-i18n-aria]")) {
+          el.setAttribute("aria-label", T()[el.dataset.i18nAria]);
+          el.title = T()[el.dataset.i18nAria];
+        }
+        $("kielinappi").textContent = kieli === "fi" ? "EN" : "FI";
+        $("kielinappi").setAttribute("aria-label", kieli === "fi" ? "In English" : "Suomeksi");
+        rakennaTyokalut();
+      }
+
+      $("kielinappi").addEventListener("click", () => {
+        kieli = kieli === "fi" ? "en" : "fi";
+        kaanna();
+      });
+
+      // --- Näkymät ---
+
+      function naytaNakyma(id) {
+        nakyma = id;
+        for (const n of document.querySelectorAll(".nakyma")) n.hidden = n.id !== id;
+        herata();
+      }
+
+      $("aloita").addEventListener("click", () => naytaNakyma("piirto"));
+      $("uusi").addEventListener("click", () => naytaNakyma("piirto"));
+
+      // --- Työkalut ---
+
+      function nappi(luokka, asetukset, kun) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = luokka;
+        Object.assign(b, asetukset);
+        b.addEventListener("click", kun);
+        return b;
+      }
+
+      function rakennaTyokalut() {
+        $("varit").replaceChildren(
+          ...MUSTEET.map((m) => {
+            const b = nappi("vari", { title: m[kieli] }, () => {
+              tila.vari = m.hex;
+              if (tila.sivellin === "kumi") tila.sivellin = "tussi";
+              rakennaTyokalut();
+            });
+            b.style.setProperty("--c", m.hex);
+            b.setAttribute("aria-label", m[kieli]);
+            b.setAttribute("aria-pressed", String(tila.sivellin !== "kumi" && tila.vari === m.hex));
+            return b;
+          }),
+        );
+        $("siveltimet").replaceChildren(
+          ...Object.entries(SIVELTIMET).map(([id, s]) => {
+            const b = nappi("", { textContent: s[kieli] }, () => {
+              tila.sivellin = id;
+              rakennaTyokalut();
+            });
+            b.setAttribute("aria-pressed", String(tila.sivellin === id));
+            return b;
+          }),
+        );
+        const halkaisijat = { s: 8, m: 14, l: 22 };
+        $("koot").replaceChildren(
+          ...Object.keys(KOOT).map((id) => {
+            const b = nappi("koko", {}, () => {
+              tila.koko = id;
+              rakennaTyokalut();
+            });
+            b.style.setProperty("--d", `${halkaisijat[id]}px`);
+            b.setAttribute("aria-label", T()[id]);
+            b.setAttribute("aria-pressed", String(tila.koko === id));
+            return b;
+          }),
+        );
+      }
+
+      // --- Piirtoalusta ---
+
+      const kehys = document.querySelector(".alusta-kehys");
+      const kerros = $("kerros");
+      const pinta = $("pinta");
+      const kctx = kerros.getContext("2d");
+      const pctx = pinta.getContext("2d");
+      let px = 0;
+
+      function piirraKaikki() {
+        kctx.clearRect(0, 0, px, px);
+        for (const viiva of tila.viivat) piirraViiva(kctx, viiva, px);
+      }
+
+      new ResizeObserver(() => {
+        if (!kehys.clientWidth) return;
+        px = sovitaCanvas(kerros, kehys.clientWidth);
+        sovitaCanvas(pinta, kehys.clientWidth);
+        piirraKaikki();
+      }).observe(kehys);
+
+      let nykyinen = null;
+      let kynaHavaittu = false;
+      let alue;
+      let alku = 0;
+      let piirtopyynto = 0;
+
+      function lisaaPiste(e) {
+        const x = Math.min(1, Math.max(0, (e.clientX - alue.left) / alue.width));
+        const y = Math.min(1, Math.max(0, (e.clientY - alue.top) / alue.height));
+        const paine = e.pointerType === "pen" ? e.pressure || 0.5 : 0.5;
+        nykyinen.viiva.pisteet.push([+x.toFixed(4), +y.toFixed(4), +paine.toFixed(3), Math.round(e.timeStamp - alku)]);
+      }
+
+      function pyydaPiirto() {
+        if (piirtopyynto) return;
+        piirtopyynto = requestAnimationFrame(() => {
+          piirtopyynto = 0;
+          pctx.clearRect(0, 0, px, px);
+          if (nykyinen) piirraViiva(pctx, nykyinen.viiva, px, { kumiNakyvana: true });
+        });
+      }
+
+      pinta.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "pen") kynaHavaittu = true;
+        // Kämmenen hylkäys: kun kynä on havaittu, sormet eivät piirrä.
+        if (nykyinen || (kynaHavaittu && e.pointerType === "touch")) return;
+        e.preventDefault();
+        try {
+          pinta.setPointerCapture(e.pointerId);
+        } catch {
+          // Synteettisillä tapahtumilla ei ole aktiivista osoitinta – piirretään ilman kaappausta.
+        }
+        alue = pinta.getBoundingClientRect();
+        alku = e.timeStamp;
+        nykyinen = {
+          pointerId: e.pointerId,
+          viiva: {
+            vari: tila.sivellin === "kumi" ? "#000000" : tila.vari,
+            koko: KOOT[tila.koko],
+            sivellin: tila.sivellin,
+            paine: e.pointerType === "pen",
+            pisteet: [],
+          },
+        };
+        lisaaPiste(e);
+        pyydaPiirto();
+        $("vihje").hidden = true;
+      });
+
+      pinta.addEventListener("pointermove", (e) => {
+        if (!nykyinen || e.pointerId !== nykyinen.pointerId) return;
+        const yhdistetyt = e.getCoalescedEvents?.();
+        for (const tapahtuma of yhdistetyt?.length ? yhdistetyt : [e]) lisaaPiste(tapahtuma);
+        pyydaPiirto();
+      });
+
+      function lopetaViiva(e) {
+        if (!nykyinen || e.pointerId !== nykyinen.pointerId) return;
+        const { viiva } = nykyinen;
+        nykyinen = null;
+        tila.viivat.push(viiva);
+        tila.kumotut = [];
+        piirraViiva(kctx, viiva, px);
+        pctx.clearRect(0, 0, px, px);
+        paivitaToiminnot();
+      }
+
+      pinta.addEventListener("pointerup", lopetaViiva);
+      pinta.addEventListener("pointercancel", lopetaViiva);
+
+      // --- Kumoa / tee uudelleen / tyhjennä ---
+
+      function paivitaToiminnot() {
+        $("kumoa").disabled = tila.viivat.length === 0;
+        $("uudelleen").disabled = tila.kumotut.length === 0;
+        $("tyhjenna").disabled = tila.viivat.length === 0;
+        const pisteita = tila.viivat.filter((v) => v.sivellin !== "kumi").reduce((s, v) => s + v.pisteet.length, 0);
+        $("laheta").disabled = pisteita < 8;
+        $("vihje").hidden = tila.viivat.length > 0;
+      }
+
+      $("kumoa").addEventListener("click", () => {
+        if (!tila.viivat.length) return;
+        tila.kumotut.push(tila.viivat.pop());
+        piirraKaikki();
+        paivitaToiminnot();
+      });
+
+      $("uudelleen").addEventListener("click", () => {
+        if (!tila.kumotut.length) return;
+        tila.viivat.push(tila.kumotut.pop());
+        piirraKaikki();
+        paivitaToiminnot();
+      });
+
+      let varmistusAjastin = 0;
+      $("tyhjenna").addEventListener("click", () => {
+        const b = $("tyhjenna");
+        if (!b.classList.contains("varmista")) {
+          b.classList.add("varmista");
+          b.setAttribute("aria-label", T().varmista);
+          b.title = T().varmista;
+          varmistusAjastin = setTimeout(() => {
+            b.classList.remove("varmista");
+            kaanna();
+          }, 3000);
+          return;
+        }
+        clearTimeout(varmistusAjastin);
+        b.classList.remove("varmista");
+        kaanna();
+        tyhjennaAlusta();
+      });
+
+      function tyhjennaAlusta() {
+        tila.viivat = [];
+        tila.kumotut = [];
+        piirraKaikki();
+        paivitaToiminnot();
+      }
+
+      // --- Lähetys ---
+
+      const dialogi = $("vahvistus");
+
+      $("laheta").addEventListener("click", () => {
+        const esikatselu = $("vahvistus-esikatselu");
+        const koko = sovitaCanvas(esikatselu, 96);
+        const ctx = esikatselu.getContext("2d");
+        ctx.clearRect(0, 0, koko, koko);
+        piirraPiirros(ctx, { viivat: tila.viivat }, koko);
+        $("ehdot").checked = false;
+        $("vahvista").disabled = true;
+        dialogi.showModal();
+      });
+
+      $("ehdot").addEventListener("change", (e) => ($("vahvista").disabled = !e.target.checked));
+
+      $("vahvista").addEventListener("click", () => {
+        const piirros = lisaaPiirros({ viivat: tila.viivat, lahde: kioski ?? "mobiili", kieli });
+        dialogi.close();
+        $("kiitos-tunnus").textContent = tunnus(piirros.nro);
+        naytaNakyma("kiitos");
+        const esikatselu = $("kiitos-esikatselu");
+        const koko = sovitaCanvas(esikatselu, 180);
+        const ctx = esikatselu.getContext("2d");
+        ctx.clearRect(0, 0, koko, koko);
+        // Neliön muotoinen piirros ympyrän sisään
+        ctx.save();
+        ctx.translate(koko * 0.15, koko * 0.15);
+        piirraPiirros(ctx, piirros, koko * 0.7);
+        ctx.restore();
+        tyhjennaAlusta();
+        if (kioski) kiitosAjastin = setTimeout(() => naytaNakyma("aloitus"), 15000);
+      });
+
+      // --- Kioskitila: nollaus käyttämättömyyden jälkeen ---
+
+      let kiitosAjastin = 0;
+      let idleAjastin = 0;
+      let laskuriAjastin = 0;
+
+      function herata() {
+        if (!kioski || !$("laskuri").hidden) return;
+        clearTimeout(idleAjastin);
+        if (nakyma === "piirto") idleAjastin = setTimeout(kysyJatketaanko, 60000);
+      }
+
+      function kysyJatketaanko() {
+        let jaljella = 10;
+        $("laskuri-numero").textContent = jaljella;
+        $("laskuri").hidden = false;
+        laskuriAjastin = setInterval(() => {
+          jaljella -= 1;
+          $("laskuri-numero").textContent = jaljella;
+          if (jaljella <= 0) nollaaKioski();
+        }, 1000);
+      }
+
+      function nollaaKioski() {
+        clearInterval(laskuriAjastin);
+        clearTimeout(kiitosAjastin);
+        $("laskuri").hidden = true;
+        if (dialogi.open) dialogi.close();
+        tyhjennaAlusta();
+        naytaNakyma("aloitus");
+      }
+
+      $("laskuri-jatka").addEventListener("click", () => {
+        clearInterval(laskuriAjastin);
+        $("laskuri").hidden = true;
+        herata();
+      });
+
+      document.addEventListener("pointerdown", herata, { capture: true });
+      $("uusi").addEventListener("click", () => clearTimeout(kiitosAjastin));
+
+      kaanna();
+      paivitaToiminnot();
+    </script>
+  </body>
+</html>
