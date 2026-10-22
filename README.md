@@ -80,7 +80,7 @@ Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria sama
 
 ## Arkkitehtuuri lyhyesti
 
-- **Next.js** (App Router), hostaus **Vercel** EU-alueella.
+- **Next.js** (App Router), hostaus **Vercel**. Funktiot ajetaan Dublinissa (`dub1`, [vercel.json](vercel.json)) Supabase-projektin (`eu-west-1`, Irlanti) vieressä. Jos Supabase-projekti vaihtuu toiselle alueelle, vaihda myös tämä.
 - **Supabase**: Postgres, RLS, Auth ja Realtime.
   - Uudet piirrokset kulkevat vain API-reitin kautta (service role).
   - Anonyymit käyttäjät näkevät vain hyväksytyt piirrokset.
