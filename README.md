@@ -15,7 +15,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
 | `/?kiosk=ipad-1` | iPad-kioski | Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
-| `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` |
+| `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` |
 | `POST /api/piirrokset` | Piirtonäkymä | Validointi ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
@@ -23,7 +23,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 ### 1. Supabase
 
 1. Luo projekti osoitteessa [supabase.com](https://supabase.com) **EU-alueelle** (esim. Frankfurt tai Tukholma).
-2. Avaa **SQL Editor** ja aja tiedosto [`supabase/migrations/0001_perusrakenne.sql`](supabase/migrations/0001_perusrakenne.sql).
+2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`).
 3. Luo moderaattorit kohdassa **Authentication → Users → Add user** (sähköposti ja salasana, "Auto Confirm User").
 4. Anna käyttäjille moderointioikeus SQL-editorissa:
 
@@ -63,14 +63,15 @@ npm run typecheck
   - Hyväksytyt piirrokset tulevat Realtime-muutoksina.
   - Hylkäys, piilotus ja hätäpysäytys tulevat näytölle lisäksi Realtime-broadcastina (`naytto`-kanava), koska RLS piilottaa hylätyt rivit anonyymeiltä.
   - Data tarkistetaan 20 sekunnin välein.
-  - Hyväksytyt piirrokset tallennetaan selaimen välimuistiin verkkokatkojen varalle.
+  - Hyväksytyt piirrokset tallennetaan selaimen välimuistiin, ja Service Worker (`public/naytto-sw.js`, vain tuotannossa) tallentaa sivun ja sen tiedostot. Näyttö käynnistyy siis uudelleen myös ilman verkkoa.
+  - Näyttö lähettää 30 sekunnin välein sykkeen, joka näkyy moderoinnin yläpalkissa: sininen = ok, oranssi = viive, verkkokatko tai virheitä, punainen = ei vastaa.
+  - Näyttö palautuu itse: jos animaatio jumittuu yli 30 sekunniksi tai virheitä tulee yli 20 minuutissa, sivu ladataan uudelleen.
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
 ## Seuraavaksi (vaihe 3)
 
 - Tekoälyesisuodatus moderointiin (`ai_arvio`)
 - Resolume-silta (OSC/REST → WebSocket)
-- Näytön täysi offline-tuki (Service Worker)
 - Kioskien oma tunniste (nyt `?kiosk=` antaa väljemmän rate limitin)
 - Botintorjunta (Turnstile)
 - Verkkogalleria

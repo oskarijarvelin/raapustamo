@@ -6,6 +6,7 @@ import PiirrosCanvas from "@/components/PiirrosCanvas";
 import { moderointijono } from "@/lib/jono";
 import { kellonaika, piirraPiirros, sovitaCanvas, tunnus } from "@/lib/piirto";
 import { NAYTTOKANAVA, selainAsiakas } from "@/lib/supabase/selain";
+import { ikaTekstina, sykkeenTila, type NaytonSyke, type SykkeenTila } from "@/lib/syke";
 import type { AiArvio, PiirroksenTila, Piirros } from "@/lib/tyypit";
 import "./moderointi.css";
 
@@ -118,6 +119,7 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
   const [valittuId, setValittuId] = useState<string | null>(null);
   const [paljastetut, setPaljastetut] = useState<Set<string>>(new Set());
   const [ilmoitus, setIlmoitus] = useState<{ teksti: string; peru?: () => void } | null>(null);
+  const [naytot, setNaytot] = useState<Map<string, NaytonSyke>>(new Map());
   const nayttokanava = useRef<RealtimeChannel | null>(null);
 
   // Lataus ja reaaliaikaiset muutokset
@@ -139,6 +141,10 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
       .eq("avain", "naytto")
       .single()
       .then(({ data }) => !peruttu && setTauko(Boolean(data?.arvo?.tauko)));
+    supabase
+      .from("naytot")
+      .select("*")
+      .then(({ data }) => !peruttu && data && setNaytot(new Map((data as NaytonSyke[]).map((n) => [n.tunnus, n]))));
 
     const muutokset = supabase
       .channel("moderointi")
@@ -153,6 +159,10 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "asetukset" }, (muutos) => {
         const rivi = muutos.new as { avain: string; arvo: { tauko?: boolean } };
         if (rivi.avain === "naytto") setTauko(Boolean(rivi.arvo.tauko));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "naytot" }, (muutos) => {
+        const syke = muutos.new as NaytonSyke;
+        if (syke.tunnus) setNaytot((vanhat) => new Map(vanhat).set(syke.tunnus, syke));
       })
       .subscribe();
     nayttokanava.current = supabase.channel(NAYTTOKANAVA).subscribe();
@@ -247,6 +257,7 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
           </span>
         </div>
         <div className="yla-oikea">
+          <Naytot naytot={[...naytot.values()]} />
           <button
             className="siru naytto-tila"
             type="button"
@@ -347,6 +358,55 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
         </div>
       )}
     </div>
+  );
+}
+
+// --- Näyttöjen syke ---
+
+const SYKEVARIT: Record<SykkeenTila, string> = { ok: "var(--ok)", viive: "var(--varoitus)", poissa: "var(--vaara)" };
+
+function Naytot({ naytot }: { naytot: NaytonSyke[] }) {
+  // Päivittää "nähty X s sitten" -tekstit, vaikka uutta sykettä ei tulisi.
+  const [nyt, setNyt] = useState(() => Date.now());
+  useEffect(() => {
+    const ajastin = setInterval(() => setNyt(Date.now()), 5000);
+    return () => clearInterval(ajastin);
+  }, []);
+
+  if (!naytot.length) {
+    return (
+      <span className="siru naytto-syke" title="Yksikään näyttö ei ole vielä lähettänyt sykettä">
+        <span className="piste" style={{ background: "var(--teksti-3)" }} />
+        Ei näyttöjä
+      </span>
+    );
+  }
+  return (
+    <>
+      {naytot
+        .sort((a, b) => a.tunnus.localeCompare(b.tunnus))
+        .map((n) => {
+          const tila = sykkeenTila(n, nyt);
+          const t = n.tiedot;
+          const kuvaus = [
+            `Nähty ${ikaTekstina(n.viimeksi_nahty, nyt)} sitten`,
+            t.verkossa === false && "ei verkkoyhteyttä – pyörii välimuistista",
+            t.virheita_min ? `${t.virheita_min} virhettä viimeisen minuutin aikana` : null,
+            t.naytolla?.length ? `Screenillä: ${t.naytolla.map(tunnus).join(", ")}` : null,
+            `Piirroksia muistissa: ${t.piirroksia ?? "?"}`,
+            `Layout ${t.layout ?? "?"} · versio ${t.versio ?? "?"} · käynnissä ${t.kaynnissa_min ?? "?"} min`,
+          ]
+            .filter(Boolean)
+            .join("\n");
+          return (
+            <span key={n.tunnus} className="siru naytto-syke" data-tila={tila} title={kuvaus}>
+              <span className="piste" style={{ background: SYKEVARIT[tila] }} />
+              {n.tunnus.toUpperCase()}
+              <span className="hiljainen toiminto">&nbsp;· {ikaTekstina(n.viimeksi_nahty, nyt)}</span>
+            </span>
+          );
+        })}
+    </>
   );
 }
 

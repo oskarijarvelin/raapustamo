@@ -44,6 +44,14 @@
   cursor: pointer;
 }
 
+.moderointisivu .naytto-syke {
+  cursor: help;
+}
+
+.moderointisivu .naytto-syke[data-tila="poissa"] {
+  background: rgb(245 70 83 / 0.18);
+}
+
 .moderointisivu .naytto-tila[data-tila="live"] .piste {
   background: var(--ok);
   box-shadow: 0 0 0 4px rgb(77 85 220 / 0.3);
@@ -534,6 +542,7 @@
 
   .moderointisivu .tuote-ala,
   .moderointisivu .naytto-tila .toiminto,
+  .moderointisivu .naytto-syke .toiminto,
   .moderointisivu .valilehdet .pitka {
     display: none;
   }

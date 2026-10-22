@@ -22,6 +22,10 @@ interface Props {
   osoite: string;
   /** null = sovita ikkunaan (esikatselu), 1 = natiivi 1:1-ulostulo */
   skaala: number | null;
+  /** Näytön tunniste sykkeessä, esim. "led-1" */
+  tunnus: string;
+  /** Ajastettu uudelleenlataus minuutteina muistivuotojen varalle, 0 = pois */
+  uudelleenlatausMin: number;
 }
 
 const LEVEYS = 4032;
@@ -31,6 +35,11 @@ const ULOS = 380;
 const MIKRO = 180;
 const PAIVITYSVALI = 20_000;
 const VALIMUISTI = "raapustamo:naytto:v1";
+const SYKEVALI = 30_000;
+/** Jos animaatio on jumissa näin kauan näkyvällä sivulla, sivu ladataan uudelleen. */
+const JUMIRAJA = 30_000;
+/** Näin monta virhettä minuutissa → uudelleenlataus */
+const VIRHERAJA = 20;
 const KENTAT = "id, nro, luotu, viivat, nostettu, nayttokerrat, viimeksi_naytetty";
 
 type Vaihe = "tyhja" | "ulos" | "piirtyy" | "valmis" | "mikro";
@@ -108,7 +117,7 @@ function QrKoodi({ url }: { url: string }) {
   );
 }
 
-export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala }: Props) {
+export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin }: Props) {
   const supabase = useMemo(() => selainAsiakas(), []);
   const solujenMaara = layout === "trio" ? 3 : layout === "solo" ? 1 : 12;
   const koko = layout === "seina" ? 576 : 1152;
@@ -210,9 +219,30 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       }
     }
 
+    // Virhe yhdessä ruudussa ei saa pysäyttää koko näyttöä.
+    const virheet: number[] = [];
+    const kirjaaVirhe = (virhe: unknown) => {
+      virheet.push(Date.now());
+      console.error("Näytön virhe", virhe);
+    };
+    const virheKuuntelija = (e: ErrorEvent | PromiseRejectionEvent) => kirjaaVirhe("reason" in e ? e.reason : e.error);
+    addEventListener("error", virheKuuntelija);
+    addEventListener("unhandledrejection", virheKuuntelija);
+
     let kehysId = 0;
+    let viimeisinKehys = performance.now();
     const kehys = (nyt: number) => {
-      for (const s of solut) paivitaSolu(s, nyt);
+      viimeisinKehys = nyt;
+      for (const s of solut) {
+        try {
+          paivitaSolu(s, nyt);
+        } catch (virhe) {
+          kirjaaVirhe(virhe);
+          s.vaihe = "tyhja";
+          s.piirros = null;
+          s.seuraava = null;
+        }
+      }
       kehysId = requestAnimationFrame(kehys);
     };
     kehysId = requestAnimationFrame(kehys);
@@ -279,6 +309,37 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     const paivitys = setInterval(lataa, PAIVITYSVALI);
     const kierrokset = setInterval(kierros, vaihtoS * 1000);
 
+    // Syke: moderointi näkee, että screen on elossa ja mitä siinä näkyy.
+    const kaynnistetty = Date.now();
+    const syke = () => {
+      const minuuttiSitten = Date.now() - 60_000;
+      supabase
+        ?.rpc("naytto_syke", {
+          naytto: nayttoTunnus,
+          syke_tiedot: {
+            versio: process.env.NEXT_PUBLIC_VERSIO ?? "dev",
+            layout,
+            tauko: taukoRef.current,
+            verkossa: navigator.onLine,
+            piirroksia: piirrokset.size,
+            naytolla: solut.flatMap((s) => (s.piirros ? [s.piirros.nro] : [])),
+            kaynnissa_min: Math.round((Date.now() - kaynnistetty) / 60_000),
+            virheita_min: virheet.filter((t) => t > minuuttiSitten).length,
+          },
+        })
+        .then(({ error }) => error && console.warn("Syke epäonnistui", error.message));
+    };
+    syke();
+    const sykkeet = setInterval(syke, SYKEVALI);
+
+    // Vahtikoira: jumittunut animaatio tai virheiden tulva → uudelleenlataus.
+    const vahti = setInterval(() => {
+      const jumissa = document.visibilityState === "visible" && performance.now() - viimeisinKehys > JUMIRAJA;
+      const minuuttiSitten = Date.now() - 60_000;
+      if (jumissa || virheet.filter((t) => t > minuuttiSitten).length > VIRHERAJA) location.reload();
+    }, 10_000);
+    const ajastettu = uudelleenlatausMin > 0 ? setTimeout(() => location.reload(), uudelleenlatausMin * 60_000) : undefined;
+
     let muutokset: RealtimeChannel | null = null;
     let komennot: RealtimeChannel | null = null;
     if (supabase) {
@@ -318,10 +379,22 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       cancelAnimationFrame(kehysId);
       clearInterval(paivitys);
       clearInterval(kierrokset);
+      clearInterval(sykkeet);
+      clearInterval(vahti);
+      clearTimeout(ajastettu);
+      removeEventListener("error", virheKuuntelija);
+      removeEventListener("unhandledrejection", virheKuuntelija);
       if (muutokset) supabase?.removeChannel(muutokset);
       if (komennot) supabase?.removeChannel(komennot);
     };
-  }, [supabase, layout, koko, solujenMaara, vaihtoS]);
+  }, [supabase, layout, koko, solujenMaara, vaihtoS, nayttoTunnus, uudelleenlatausMin]);
+
+  // Service Worker: näyttö käynnistyy välimuistista myös ilman verkkoa (vain tuotannossa,
+  // koska kehityspalvelimen tiedostot muuttuvat jatkuvasti).
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/naytto-sw.js", { scope: "/naytto" }).catch((virhe) => console.warn("Service Worker epäonnistui", virhe));
+  }, []);
 
   const solut = Array.from({ length: solujenMaara }, (_, i) => (
     <div key={i} className="solu" style={{ width: koko, height: koko }}>
