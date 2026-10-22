@@ -9,7 +9,7 @@ export interface Raja {
 }
 
 // Kioskin iPadin kaikki käyttäjät jakavat saman laitetunnisteen, joten raja on väljempi.
-// TODO (vaihe 3): kioskeille oma salainen tunniste, jottei lähdettä voi väärentää.
+// Kioskiraja annetaan vain, kun API on tarkistanut kioskin avaimen (src/lib/kioski.ts).
 export const RAJAT: Record<"mobiili" | "kioski", Raja> = {
   mobiili: { vali: 30, tunnissa: 10 },
   kioski: { vali: 8, tunnissa: 150 },
@@ -17,9 +17,16 @@ export const RAJAT: Record<"mobiili" | "kioski", Raja> = {
 
 export const rajaLahteelle = (lahde: string) => (lahde.startsWith("ipad-") ? RAJAT.kioski : RAJAT.mobiili);
 
-/** Anonyymi laitetunniste: IP + selain + suola hashattuna. IP:tä ei tallenneta selkokielisenä. */
-export function laitetunniste(otsakkeet: Headers, suola: string): string {
-  const ip = otsakkeet.get("x-forwarded-for")?.split(",")[0]?.trim() || otsakkeet.get("x-real-ip") || "tuntematon";
+export const asiakkaanIp = (otsakkeet: Headers) =>
+  otsakkeet.get("x-forwarded-for")?.split(",")[0]?.trim() || otsakkeet.get("x-real-ip") || undefined;
+
+/**
+ * Anonyymi laitetunniste: IP + selain + suola hashattuna. IP:tä ei tallenneta selkokielisenä.
+ * Tunnistettu kioski saa oman tunnisteen, jottei se jaa laskuria saman verkon puhelinten kanssa.
+ */
+export function laitetunniste(otsakkeet: Headers, suola: string, kioski?: string): string {
+  if (kioski) return createHash("sha256").update(`${suola}|kioski|${kioski}`).digest("hex");
+  const ip = asiakkaanIp(otsakkeet) ?? "tuntematon";
   const selain = otsakkeet.get("user-agent") ?? "";
   return createHash("sha256").update(`${suola}|${ip}|${selain}`).digest("hex");
 }

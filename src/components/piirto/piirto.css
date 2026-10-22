@@ -416,6 +416,11 @@
   outline-offset: 3px;
 }
 
+/* Turnstile näkyy vain, jos Cloudflare vaatii vuorovaikutusta. */
+.piirtosivu .turnstile:empty {
+  display: none;
+}
+
 .piirtosivu .vahvistus-napit {
   display: flex;
   flex-direction: column;

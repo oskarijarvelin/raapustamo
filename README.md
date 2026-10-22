@@ -14,10 +14,10 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | Reitti | Kuka | Huomioita |
 |---|---|---|
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
-| `/?kiosk=ipad-1` | iPad-kioski | Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
+| `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
 | `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
-| `POST /api/piirrokset` | Piirtonäkymä | Validointi ja rate limit, tallentaa piirroksen moderointijonoon |
+| `POST /api/piirrokset` | Piirtonäkymä | Validointi, kioskiavain, Turnstile ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
 
@@ -35,7 +35,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 
 ### 2. Ympäristömuuttujat
 
-Kopioi `.env.example` tiedostoksi `.env.local` ja täytä arvot. Ne löytyvät Supabasen kohdasta **Project Settings → API**:
+Kopioi `.env.example` tiedostoksi `.env.local` ja täytä arvot. Supabasen arvot löytyvät kohdasta **Project Settings → API**:
 
 | Muuttuja | Mistä |
 |---|---|
@@ -43,6 +43,14 @@ Kopioi `.env.example` tiedostoksi `.env.local` ja täytä arvot. Ne löytyvät S
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `anon` / publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | `service_role` / secret key. **Vain palvelimelle, ei koskaan selaimeen tai repoon.** |
 | `LAITE_SUOLA` | Oma satunnainen merkkijono, esim. `openssl rand -hex 32` |
+| `NEXT_PUBLIC_TURNSTILE_SITEKEY` | Turnstile-widgetin sitekey. Kehityksessä Cloudflaren testiavain `1x00000000000000000000AA` |
+| `TURNSTILE_SECRET` | Turnstile-widgetin secret key. Kehityksessä testiavain `1x0000000000000000000000000000000AA`. **Vain palvelimelle.** |
+| `TURNSTILE_HOSTNAMES` | Piirtonäkymän hostnimet pilkuilla eroteltuina. Testiavaimilla `example.com`, tuotannossa oma domain (ei localhostia) |
+| `KIOSKI_SALAISUUS` | Oma satunnainen merkkijono, josta kioskiavaimet lasketaan. **Vain palvelimelle.** |
+
+Ilman Turnstile-muuttujia lähetys-API vastaa `503` (tarkistus ei koskaan aukea itsestään).
+Vercelin tuotannossa (`VERCEL_ENV=production`) testiavainten tuloksia ei hyväksytä, joten tuotantoon tarvitaan
+oma widget: **Cloudflare dashboard → Turnstile → Add widget**, tila *Managed*, domainiksi tuotantodomain.
 
 ### 3. Kehitys
 
@@ -52,6 +60,23 @@ npm run dev        # http://localhost:3000
 npm test           # yksikkötestit (validointi, jonologiikka, rate limit)
 npm run typecheck
 ```
+
+### 4. Kioskit
+
+Kioskin väljempi rate limit (150 lähetystä tunnissa) vaatii kioskikohtaisen avaimen, jottei kuka tahansa
+voi lähettää `lahde: "ipad-1"` ja ohittaa puhelimien rajaa. Avain lasketaan `KIOSKI_SALAISUUS`-arvosta,
+joten sitä ei tallenneta minnekään.
+
+```bash
+npm run kioskiavain -- --osoite https://raapustamo.fi ipad-1 ipad-2
+```
+
+Avaa tulostettu asennusosoite kerran kunkin iPadin Safarissa. Avain tallentuu laitteelle ja katoaa
+osoiteriviltä, joten Guided Accessin kotisivuksi riittää `…/?kiosk=ipad-1`. Jos avain puuttuu tai on väärä,
+kioski näyttää lähetettäessä virheen "Kioskia ei ole tunnistettu". Avaa silloin asennusosoite uudelleen.
+`KIOSKI_SALAISUUS`-arvon vaihtaminen mitätöi kaikkien kioskien avaimet.
+
+Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria saman festivaaliverkon puhelinten kanssa.
 
 ## Arkkitehtuuri lyhyesti
 
@@ -68,11 +93,11 @@ npm run typecheck
   - Näyttö lähettää 30 sekunnin välein sykkeen, joka näkyy moderoinnin yläpalkissa: sininen = ok, oranssi = viive, verkkokatko tai virheitä, punainen = ei vastaa.
   - Näyttö palautuu itse: jos animaatio jumittuu yli 30 sekunniksi tai virheitä tulee yli 20 minuutissa, sivu ladataan uudelleen.
   - Resolume-silta ([silta/](silta/README.md)) tahdistaa kierron karuselliin. Piirrokset vaihtuvat ja näyttökerrat kirjataan vain, kun Raapustamo-klippi on screenillä.
+- **Lähetykset**: palvelin tarkistaa piirroksen rakenteen, kioskin avaimen ja Cloudflare Turnstile -tunnisteen (siteverify: `success`, action `piirros` ja hostname) ennen rate limitiä. Widget on vahvistusdialogissa ja näkyy vain, jos Cloudflare vaatii vuorovaikutusta.
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
 ## Seuraavaksi (vaihe 3)
 
 - Tekoälyesisuodatus moderointiin (`ai_arvio`)
-- Kioskien oma tunniste (nyt `?kiosk=` antaa väljemmän rate limitin)
-- Botintorjunta (Turnstile)
+- Oma Turnstile-widget tuotantodomainille
 - Verkkogalleria

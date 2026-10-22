@@ -1,5 +1,6 @@
 import type { Viewport } from "next";
 import Piirtonakyma from "@/components/piirto/Piirtonakyma";
+import { KIOSKI } from "@/lib/kioski";
 import type { Kieli } from "@/lib/tyypit";
 
 export const viewport: Viewport = {
@@ -10,8 +11,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#000000",
 };
-
-const KIOSKI = /^ipad-[1-9][0-9]?$/;
 
 export default async function Etusivu({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { kiosk, kieli } = await searchParams;

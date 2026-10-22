@@ -1,7 +1,9 @@
 "use client";
 
+import Script from "next/script";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { KOOT, KUMIN_VARI, MUSTEET, SIVELTIMET, piirraPiirros, piirraViiva, sovitaCanvas, tunnus } from "@/lib/piirto";
+import { TURNSTILE_ACTION } from "@/lib/turnstile";
 import type { Kieli, KokoId, SivellinId, Viiva } from "@/lib/tyypit";
 import { TEKSTIT } from "./tekstit";
 import "./piirto.css";
@@ -12,6 +14,31 @@ const KAYTTAMATTOMYYS_MS = 60_000;
 const LASKURI_S = 10;
 const KIITOS_KIOSKISSA_MS = 15_000;
 const HALKAISIJAT: Record<KokoId, number> = { s: 8, m: 14, l: 22 };
+const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY;
+
+interface TurnstileApi {
+  render: (
+    kohde: HTMLElement,
+    asetukset: {
+      sitekey: string;
+      action: string;
+      theme: "dark";
+      language: Kieli;
+      appearance: "interaction-only";
+      size: "flexible";
+      callback: (tunniste: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+    },
+  ) => string;
+  reset: (widget: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 interface Props {
   /** Kioskin tunniste (`?kiosk=ipad-1`) tai null mobiilissa */
@@ -187,10 +214,70 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
   const [virhe, setVirhe] = useState<string | null>(null);
   const [kiitos, setKiitos] = useState<{ nro: number; viivat: Viiva[] } | null>(null);
 
+  // Kioskin avain tulee asennusosoitteesta (`?kiosk=ipad-1&avain=…`). Se tallennetaan
+  // laitteelle ja poistetaan osoiteriviltä, jottei kävijä näe sitä.
+  const kioskiavain = useRef<string | null>(null);
+  useEffect(() => {
+    if (!kioski) return;
+    const avainNimi = `raapustamo:kioskiavain:${kioski}`;
+    const url = new URL(window.location.href);
+    const urlAvain = url.searchParams.get("avain");
+    try {
+      if (urlAvain) localStorage.setItem(avainNimi, urlAvain);
+      kioskiavain.current = urlAvain ?? localStorage.getItem(avainNimi);
+    } catch {
+      kioskiavain.current = urlAvain;
+    }
+    if (urlAvain) {
+      url.searchParams.delete("avain");
+      history.replaceState(null, "", url);
+    }
+  }, [kioski]);
+
+  // Turnstile: widget renderöidään vahvistusdialogiin, kun dialogi avataan ensimmäisen kerran.
+  // Se näkyy vain, jos Cloudflare vaatii vuorovaikutusta. Tunniste on kertakäyttöinen.
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidget = useRef<string | null>(null);
+  const [turnstileTunniste, setTurnstileTunniste] = useState("");
+  const [turnstileVirhe, setTurnstileVirhe] = useState(!TURNSTILE_SITEKEY);
+
+  function renderoiTurnstile() {
+    const api = window.turnstile;
+    if (!TURNSTILE_SITEKEY || !api || !turnstileRef.current || turnstileWidget.current !== null) return;
+    if (!dialogiRef.current?.open) return;
+    turnstileWidget.current = api.render(turnstileRef.current, {
+      sitekey: TURNSTILE_SITEKEY,
+      action: TURNSTILE_ACTION,
+      theme: "dark",
+      language: kieli,
+      appearance: "interaction-only",
+      size: "flexible",
+      callback: (tunniste) => {
+        setTurnstileTunniste(tunniste);
+        setTurnstileVirhe(false);
+      },
+      "expired-callback": () => setTurnstileTunniste(""),
+      "error-callback": () => {
+        setTurnstileTunniste("");
+        setTurnstileVirhe(true);
+      },
+    });
+  }
+
+  function nollaaTurnstile() {
+    setTurnstileTunniste("");
+    if (turnstileWidget.current !== null) window.turnstile?.reset(turnstileWidget.current);
+  }
+
   function avaaVahvistus() {
     setEhdot(false);
     setVirhe(null);
     dialogiRef.current?.showModal();
+    if (turnstileWidget.current === null) renderoiTurnstile();
+    else if (turnstileVirhe) {
+      setTurnstileVirhe(false);
+      nollaaTurnstile();
+    }
     const canvas = vahvistusRef.current;
     if (!canvas) return;
     const p = sovitaCanvas(canvas, 96);
@@ -206,7 +293,13 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
       const vastaus = await fetch("/api/piirrokset", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ viivat: viivat.current, lahde: kioski ?? "mobiili", kieli }),
+        body: JSON.stringify({
+          viivat: viivat.current,
+          lahde: kioski ?? "mobiili",
+          kieli,
+          turnstile: turnstileTunniste,
+          ...(kioski ? { kioskiavain: kioskiavain.current } : {}),
+        }),
       });
       const data = await vastaus.json().catch(() => ({}));
       if (vastaus.status === 201) {
@@ -217,12 +310,18 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
         setNakyma("kiitos");
       } else if (vastaus.status === 429) {
         setVirhe(T.virheLiianUsein.replace("{s}", String(data.odota ?? 30)));
+      } else if (data.virhe === "tarkistus-epaonnistui") {
+        setVirhe(T.virheTarkistus);
+      } else if (data.virhe === "kioski-tunnistamaton") {
+        setVirhe(T.virheKioski);
       } else {
         setVirhe(T.virheYleinen);
       }
     } catch {
       setVirhe(T.virheVerkko);
     } finally {
+      // Tunniste kului palvelimella joka tapauksessa, joten seuraava yritys tarvitsee uuden.
+      nollaaTurnstile();
       setLahetetaan(false);
     }
   }
@@ -287,6 +386,9 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
 
   return (
     <div className="piirtosivu">
+      {TURNSTILE_SITEKEY && (
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" onReady={renderoiTurnstile} />
+      )}
       <header className="ylapalkki">
         <div className="tuotemerkki">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -458,14 +560,20 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
             <input type="checkbox" checked={ehdot} onChange={(e) => setEhdot(e.target.checked)} />
             <span>{T.ehdot}</span>
           </label>
-          {virhe && (
+          <div className="turnstile" ref={turnstileRef} />
+          {(virhe || turnstileVirhe) && (
             <p className="virhe" role="alert">
-              {virhe}
+              {virhe ?? T.virheTarkistus}
             </p>
           )}
           <div className="vahvistus-napit">
-            <button className="nappi nappi--ensisijainen nappi--iso" type="button" disabled={!ehdot || lahetetaan} onClick={laheta}>
-              {lahetetaan ? T.lahetetaan : T.lahetaVahvistus}
+            <button
+              className="nappi nappi--ensisijainen nappi--iso"
+              type="button"
+              disabled={!ehdot || lahetetaan || !turnstileTunniste}
+              onClick={laheta}
+            >
+              {lahetetaan ? T.lahetetaan : ehdot && !turnstileTunniste && !turnstileVirhe ? T.tarkistetaan : T.lahetaVahvistus}
             </button>
             <button className="nappi nappi--haamu" type="button" onClick={() => dialogiRef.current?.close()}>
               {T.jatka}

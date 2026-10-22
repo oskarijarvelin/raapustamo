@@ -1,17 +1,21 @@
-// Piirrosten vastaanotto: validointi → rate limit → tallennus moderointijonoon.
+// Piirrosten vastaanotto: validointi → kioskin avain → Turnstile → rate limit → tallennus moderointijonoon.
 import { NextResponse } from "next/server";
-import { laitetunniste, odotusaika, rajaLahteelle } from "@/lib/rajoitus";
+import { onKioskiavain } from "@/lib/kioski";
+import { asiakkaanIp, laitetunniste, odotusaika, rajaLahteelle } from "@/lib/rajoitus";
 import { palvelinAsiakas } from "@/lib/supabase/palvelin";
+import { hostnimet, tarkistaTurnstile } from "@/lib/turnstile";
 import { tarkistaLahetys } from "@/lib/validointi";
 
 const MAKSIMIKOKO = 400_000; // tavua
+const TURNSTILE_HOSTNIMET = hostnimet(process.env.TURNSTILE_HOSTNAMES);
 
 const vastaus = (status: number, body: Record<string, unknown>) => NextResponse.json(body, { status });
 
 export async function POST(pyynto: Request) {
   const supabase = palvelinAsiakas();
   const suola = process.env.LAITE_SUOLA;
-  if (!supabase || !suola) return vastaus(503, { virhe: "palvelu-ei-kaytossa" });
+  const turnstileSalaisuus = process.env.TURNSTILE_SECRET;
+  if (!supabase || !suola || !turnstileSalaisuus) return vastaus(503, { virhe: "palvelu-ei-kaytossa" });
 
   const raaka = await pyynto.text();
   if (raaka.length > MAKSIMIKOKO) return vastaus(413, { virhe: "liian-suuri" });
@@ -26,8 +30,28 @@ export async function POST(pyynto: Request) {
   const tulos = tarkistaLahetys(data);
   if (!tulos.ok) return vastaus(400, { virhe: "virheellinen-piirros", syy: tulos.virhe });
   const { viivat, lahde, kieli } = tulos.lahetys;
+  const { turnstile, kioskiavain } = data as Record<string, unknown>;
 
-  const laite = laitetunniste(pyynto.headers, suola);
+  // Kioskin väljempi raja vaatii kioskikohtaisen avaimen, muuten lähde olisi väärennettävissä.
+  const kioski = lahde === "mobiili" ? undefined : lahde;
+  const kioskiSalaisuus = process.env.KIOSKI_SALAISUUS;
+  if (kioski && !(kioskiSalaisuus && onKioskiavain(kioskiSalaisuus, kioski, kioskiavain))) {
+    return vastaus(403, { virhe: "kioski-tunnistamaton" });
+  }
+
+  const ip = asiakkaanIp(pyynto.headers);
+  const ihminen = await tarkistaTurnstile(turnstile, {
+    salaisuus: turnstileSalaisuus,
+    hostnimet: TURNSTILE_HOSTNIMET,
+    tuotanto: process.env.VERCEL_ENV === "production",
+    ip,
+  });
+  if (!ihminen.ok) {
+    console.warn("Turnstile hylkäsi lähetyksen:", ihminen.syy);
+    return vastaus(403, { virhe: "tarkistus-epaonnistui" });
+  }
+
+  const laite = laitetunniste(pyynto.headers, suola, kioski);
   const tuntiSitten = new Date(Date.now() - 3600_000).toISOString();
   const { data: aiemmat, error: hakuvirhe } = await supabase
     .from("lahetykset")

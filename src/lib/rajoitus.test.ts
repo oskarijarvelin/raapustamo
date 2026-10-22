@@ -35,3 +35,13 @@ describe("laitetunniste", () => {
     expect(a).not.toContain("203.0.113.5");
   });
 });
+
+describe("kioskin laitetunniste", () => {
+  it("ei riipu verkosta eikä selaimesta ja eroaa puhelinten tunnisteista", () => {
+    const a = new Headers({ "x-forwarded-for": "203.0.113.5", "user-agent": "Safari" });
+    const b = new Headers({ "x-forwarded-for": "198.51.100.7", "user-agent": "Chrome" });
+    expect(laitetunniste(a, "suola", "ipad-1")).toBe(laitetunniste(b, "suola", "ipad-1"));
+    expect(laitetunniste(a, "suola", "ipad-1")).not.toBe(laitetunniste(a, "suola", "ipad-2"));
+    expect(laitetunniste(a, "suola", "ipad-1")).not.toBe(laitetunniste(a, "suola"));
+  });
+});

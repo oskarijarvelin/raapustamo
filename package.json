@@ -9,7 +9,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "silta": "node silta/silta.mjs"
+    "silta": "node silta/silta.mjs",
+    "kioskiavain": "node --env-file-if-exists=.env.local scripts/kioskiavain.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
