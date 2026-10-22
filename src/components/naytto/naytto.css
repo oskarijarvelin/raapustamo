@@ -1,0 +1,253 @@
+/* LED-screen: 4032 × 1152 px (21 × 6 kaappia à 192 px). Kaikki mitat lavan pikseleinä. */
+
+.nayttosivu {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--musta);
+  cursor: none;
+}
+
+.nayttosivu .lava {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4032px;
+  height: 1152px;
+  display: grid;
+  background: var(--musta);
+  transform-origin: 0 0;
+  overflow: hidden;
+}
+
+.nayttosivu .lava[data-layout="trio"] {
+  grid-template-columns: repeat(3, 1152px) 576px;
+}
+
+.nayttosivu .lava[data-layout="solo"] {
+  grid-template-columns: 2304px 1152px 576px;
+}
+
+.nayttosivu .lava[data-layout="seina"] {
+  grid-template-columns: 3456px 576px;
+}
+
+.nayttosivu .ruudukko {
+  display: grid;
+  grid-template-columns: repeat(6, 576px);
+  grid-template-rows: repeat(2, 576px);
+}
+
+/* --- Piirrosruutu --- */
+
+.nayttosivu .solu {
+  position: relative;
+  overflow: hidden;
+}
+
+.nayttosivu .solu + .solu,
+.nayttosivu .sivupalkki,
+.nayttosivu .ruudukko .solu {
+  box-shadow: inset 2px 0 0 var(--supergrafiikka);
+}
+
+.nayttosivu .ruudukko .solu:nth-child(n + 7) {
+  box-shadow: inset 2px 2px 0 var(--supergrafiikka);
+}
+
+.nayttosivu .solu canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.nayttosivu .solu-tiedot {
+  position: absolute;
+  left: 56px;
+  bottom: 44px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-weight: 600;
+  font-size: 30px;
+  color: var(--teksti-3);
+}
+
+.nayttosivu .ruudukko .solu-tiedot {
+  left: 28px;
+  bottom: 22px;
+  font-size: 20px;
+}
+
+.nayttosivu .uusi {
+  padding: 6px 20px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--valkoinen);
+  color: var(--musta);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.nayttosivu .ruudukko .uusi {
+  padding: 4px 14px;
+}
+
+.nayttosivu .tyhja {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  text-align: center;
+  color: var(--teksti-3);
+}
+
+.nayttosivu .tyhja .otsikko {
+  font-size: 72px;
+}
+
+.nayttosivu .ruudukko .tyhja .otsikko {
+  font-size: 40px;
+}
+
+.nayttosivu .tyhja span:last-child {
+  font-size: 36px;
+  font-weight: 600;
+}
+
+.nayttosivu .ruudukko .tyhja span:last-child {
+  font-size: 22px;
+}
+
+/* --- Sivupalkki: logo, kehotus ja QR --- */
+
+.nayttosivu .sivupalkki {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 72px 64px 64px;
+}
+
+.nayttosivu .sivupalkki .logo {
+  height: 360px;
+  width: auto;
+  align-self: flex-start;
+}
+
+.nayttosivu .kehotus .otsikko {
+  font-size: 92px;
+}
+
+.nayttosivu .kehotus span {
+  display: block;
+  margin-top: 14px;
+  color: var(--teksti-2);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 40px;
+  text-transform: uppercase;
+}
+
+.nayttosivu .qr {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.nayttosivu .qr-laatikko {
+  width: 340px;
+  height: 340px;
+  padding: 22px;
+  border-radius: 36px;
+  background: var(--valkoinen);
+}
+
+.nayttosivu .qr-laatikko canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.nayttosivu .qr-osoite {
+  font-weight: 700;
+  font-size: 38px;
+  letter-spacing: 0.01em;
+}
+
+/* --- Solo: iso teksti --- */
+
+.nayttosivu .teksti-alue {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 48px;
+  padding: 0 140px;
+  position: relative;
+  overflow: hidden;
+}
+
+.nayttosivu .teksti-alue .supergrafiikka {
+  right: 96px;
+  top: -120px;
+  height: 1392px;
+  width: auto;
+  max-width: none;
+}
+
+.nayttosivu .teksti-alue > :not(.supergrafiikka) {
+  position: relative;
+  z-index: 1;
+}
+
+.nayttosivu .teksti-alue .ylaotsikko {
+  font-size: 34px;
+  color: var(--teksti-2);
+}
+
+.nayttosivu .teksti-alue .otsikko {
+  font-size: 128px;
+}
+
+.nayttosivu .teksti-alue .otsikko span {
+  display: block;
+}
+
+.nayttosivu .teksti-alue p {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--teksti-2);
+}
+
+/* --- Hätäpysäytys --- */
+
+.nayttosivu .tauko {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 240px;
+  background: var(--musta);
+}
+
+.nayttosivu .tauko .logo {
+  height: 640px;
+  width: auto;
+}
+
+.nayttosivu .tauko .qr .otsikko {
+  font-size: 64px;
+}
+
+.nayttosivu .esikatselu-info {
+  position: fixed;
+  right: 12px;
+  bottom: 10px;
+  color: var(--teksti-3);
+  font-size: 12px;
+  cursor: default;
+}

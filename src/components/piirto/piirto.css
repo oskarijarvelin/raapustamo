@@ -1,0 +1,443 @@
+/* Piirtonäkymä: puhelin pystyssä, iPad vaakatasossa (työkalut sivupaneelissa) */
+
+.piirtosivu {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.piirtosivu .ylapalkki {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.piirtosivu .tuotemerkki {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.piirtosivu .tuotemerkki .erotin {
+  width: 1px;
+  height: 18px;
+  background: var(--viiva);
+}
+
+.piirtosivu .kielinappi {
+  border: 0;
+  cursor: pointer;
+}
+
+.piirtosivu .nakyma {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* --- Aloitus --- */
+
+.piirtosivu .aloitus {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 24px 20px 32px;
+  overflow: hidden;
+}
+
+.piirtosivu .aloitus .supergrafiikka {
+  top: -4%;
+  right: 6%;
+  height: 108%;
+  width: auto;
+  max-width: none;
+}
+
+.piirtosivu .aloitus > :not(.supergrafiikka),
+.piirtosivu .kiitos > :not(.supergrafiikka) {
+  position: relative;
+  z-index: 1;
+}
+
+.piirtosivu .aloitus-otsikko {
+  font-size: clamp(40px, 11vw, 88px);
+}
+
+.piirtosivu .aloitus-otsikko span {
+  display: block;
+}
+
+.piirtosivu .aloitus-ingressi {
+  max-width: 32ch;
+  margin: 0;
+  font-size: 17px;
+}
+
+/* --- Piirtäminen --- */
+
+.piirtosivu .piirto {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+
+.piirtosivu .alusta-alue {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.piirtosivu .alusta-kehys {
+  position: relative;
+  width: min(100cqw, 100cqh);
+  aspect-ratio: 1;
+  border-radius: 20px;
+  background: var(--musta);
+  box-shadow: inset 0 0 0 1px var(--viiva);
+  overflow: hidden;
+}
+
+.piirtosivu .alusta-kehys canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.piirtosivu .pinta {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.piirtosivu .vihje {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: var(--teksti-3);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.piirtosivu .tyokalut {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
+  justify-self: center;
+}
+
+.piirtosivu .rivi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.piirtosivu .vari {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--c);
+  cursor: pointer;
+  flex: none;
+  touch-action: manipulation;
+  transition: transform 120ms ease;
+}
+
+.piirtosivu .vari[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px var(--musta), 0 0 0 5px var(--valkoinen);
+  transform: scale(1.08);
+}
+
+.piirtosivu .segmentit {
+  display: flex;
+  flex: 1;
+  padding: 4px;
+  gap: 4px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--pinta-2);
+}
+
+.piirtosivu .segmentit button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--pyoristys-pill);
+  background: transparent;
+  color: var(--teksti-2);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.piirtosivu .segmentit button[aria-pressed="true"] {
+  background: var(--valkoinen);
+  color: var(--musta);
+}
+
+.piirtosivu .koot,
+.piirtosivu .toiminnot {
+  display: flex;
+  gap: 8px;
+}
+
+.piirtosivu .koko {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pinta-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.piirtosivu .koko::after {
+  content: "";
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--teksti-2);
+}
+
+.piirtosivu .koko[aria-pressed="true"] {
+  background: var(--valkoinen);
+}
+
+.piirtosivu .koko[aria-pressed="true"]::after {
+  background: var(--musta);
+}
+
+.piirtosivu .ikoninappi.varmista {
+  background: var(--vaara);
+}
+
+.piirtosivu .laheta {
+  width: 100%;
+}
+
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .piirtosivu .piirto {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 32px;
+    padding: 8px 32px 32px;
+  }
+
+  .piirtosivu .tyokalut {
+    align-self: center;
+    gap: 20px;
+  }
+
+  .piirtosivu .varit {
+    display: grid;
+    grid-template-columns: repeat(4, 56px);
+    justify-content: space-between;
+    row-gap: 16px;
+  }
+
+  .piirtosivu .vari {
+    width: 56px;
+    height: 56px;
+  }
+
+  .piirtosivu .segmentit {
+    flex-wrap: wrap;
+    border-radius: 28px;
+  }
+
+  .piirtosivu .segmentit button {
+    flex: 1 1 40%;
+    min-height: 52px;
+  }
+}
+
+/* --- Kiitos --- */
+
+.piirtosivu .kiitos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px 24px 40px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.piirtosivu .kiitos .supergrafiikka {
+  left: 6%;
+  bottom: -10%;
+  height: 90%;
+  width: auto;
+  max-width: none;
+  transform: rotate(180deg);
+}
+
+.piirtosivu .kiitos-otsikko {
+  font-size: clamp(56px, 18vw, 120px);
+}
+
+.piirtosivu .kiitos-esikatselu {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: var(--musta);
+  box-shadow: 0 0 0 2px var(--pinta-3);
+}
+
+.piirtosivu .kiitos-teksti {
+  max-width: 34ch;
+  margin: 0;
+}
+
+/* --- Vahvistus --- */
+
+.piirtosivu dialog {
+  width: min(100% - 24px, 480px);
+  max-height: calc(100dvh - 24px);
+  margin: auto auto 12px;
+  padding: 28px 24px 24px;
+  border: 0;
+  border-radius: var(--pyoristys-kortti);
+  background: var(--pinta-2);
+  color: var(--teksti);
+}
+
+@media (min-width: 700px) {
+  .piirtosivu dialog {
+    margin: auto;
+  }
+}
+
+.piirtosivu dialog::backdrop {
+  background: rgb(0 0 0 / 0.7);
+}
+
+.piirtosivu .vahvistus {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.piirtosivu .vahvistus-yla {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.piirtosivu .vahvistus-yla canvas {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  border-radius: 16px;
+  background: var(--musta);
+  box-shadow: inset 0 0 0 1px var(--viiva);
+}
+
+.piirtosivu .vahvistus-otsikko {
+  font-size: clamp(28px, 8vw, 36px);
+}
+
+.piirtosivu .vahvistus p {
+  margin: 0;
+  color: var(--teksti-2);
+  font-size: 15px;
+}
+
+.piirtosivu .vahvistus .virhe {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgb(245 70 83 / 0.15);
+  color: var(--valkoinen);
+  font-weight: 600;
+}
+
+.piirtosivu .valinta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: var(--kosketus);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.piirtosivu .valinta input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border: 2px solid var(--valkoinen);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  cursor: pointer;
+}
+
+.piirtosivu .valinta input:checked {
+  background: var(--valkoinen);
+}
+
+.piirtosivu .valinta input:checked::after {
+  content: "";
+  width: 12px;
+  height: 7px;
+  border: solid var(--musta);
+  border-width: 0 0 3px 3px;
+  transform: translateY(-2px) rotate(-45deg);
+}
+
+.piirtosivu .valinta input:focus-visible {
+  outline: 3px solid var(--korostus);
+  outline-offset: 3px;
+}
+
+.piirtosivu .vahvistus-napit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* --- Kioskin käyttämättömyyslaskuri --- */
+
+.piirtosivu .laskuri {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.88);
+  text-align: center;
+}
+
+.piirtosivu .laskuri-numero {
+  font-size: 160px;
+}

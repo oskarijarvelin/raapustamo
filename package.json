@@ -1,0 +1,29 @@
+{
+  "name": "raapustamo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lumo Art & Tech Festivalin piirrettävä vieraskirja LED-screenille",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0",
+    "next": "16.4.2",
+    "perfect-freehand": "1.2.3",
+    "qrcode-generator": "2.0.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}
