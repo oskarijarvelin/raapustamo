@@ -249,6 +249,7 @@
 
       .paatokset .nappi {
         flex: 1;
+        white-space: nowrap;
       }
 
       .ikoninappi[aria-pressed="true"] {
@@ -492,7 +493,9 @@
           padding: 12px 16px;
         }
 
-        .ylapalkki .tuote-ala {
+        .ylapalkki .tuote-ala,
+        .naytto-tila .toiminto,
+        .valilehdet .pitka {
           display: none;
         }
 
@@ -501,12 +504,21 @@
           max-width: calc(100% - 32px);
         }
 
+        .valilehdet button {
+          padding: 0 14px;
+        }
+
         main {
           padding: 16px;
         }
 
+        .paatokset {
+          gap: 8px;
+        }
+
         .paatokset .nappi {
           padding: 0 12px;
+          font-size: 15px;
         }
       }
     </style>
@@ -524,7 +536,7 @@
     <nav class="valilehdet" role="tablist" aria-label="Näkymä">
       <button role="tab" data-valilehti="jono" aria-selected="true">Jono <span class="lukumaara" id="maara-jono">0</span></button>
       <button role="tab" data-valilehti="hyvaksytty" aria-selected="false">Hyväksytyt <span class="lukumaara" id="maara-hyvaksytty">0</span></button>
-      <button role="tab" data-valilehti="hylatty" aria-selected="false">Hylätyt &amp; piilotetut <span class="lukumaara" id="maara-hylatty">0</span></button>
+      <button role="tab" data-valilehti="hylatty" aria-selected="false">Hylätyt<span class="pitka">&nbsp;&amp; piilotetut</span> <span class="lukumaara" id="maara-hylatty">0</span></button>
     </nav>
 
     <main id="sisalto"></main>
@@ -641,7 +653,7 @@
         const tauko = naytonTauko();
         const nappi = $("naytto-tila");
         nappi.dataset.tila = tauko ? "tauko" : "live";
-        nappi.innerHTML = `<span class="piste"></span>${tauko ? "Näyttö tauolla · jatka" : "Näyttö live · pysäytä"}`;
+        nappi.innerHTML = `<span class="piste"></span>${tauko ? "Näyttö tauolla" : "Näyttö live"}<span class="toiminto">&nbsp;· ${tauko ? "jatka" : "pysäytä"}</span>`;
         nappi.title = tauko ? "Palauta piirrokset LED-screenille" : "Hätäpysäytys: screenillä näkyy vain logo ja QR-koodi";
       }
 
