@@ -64,11 +64,12 @@ function polkuReunasta(reuna: number[][]): Path2D | null {
 }
 
 // Valmiiden viivojen polut välimuistiin, jotta piirtymisanimaatio laskee vain keskeneräisen viivan.
+// Pistemäärä kuuluu avaimeen, koska piirtonäkymässä viiva kasvaa samana objektina kesken vedon.
 const valimuisti = new WeakMap<Viiva, { avain: string; polku: Path2D | null }>();
 
 function viivanPolku(viiva: Viiva, px: number, minPx: number, pisteita: number) {
   const valmis = pisteita >= viiva.pisteet.length;
-  const avain = `${px}|${minPx}`;
+  const avain = `${px}|${minPx}|${viiva.pisteet.length}`;
   if (valmis) {
     const osuma = valimuisti.get(viiva);
     if (osuma && osuma.avain === avain) return osuma.polku;
