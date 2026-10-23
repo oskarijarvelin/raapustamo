@@ -18,10 +18,14 @@ ennen kuin niitä käytetään lavalla. Kirjaa jokaisesta kohdasta tulos ja hava
 ## 0. Valmistelu (ennen testiä)
 
 - [ ] Esiintyjätunnus luotu ja lisätty `esiintyjat`-tauluun (README → Keynote), tai käytössä moderaattoritunnus
-- [ ] `npm run keynote-tarkistus` koneella, jolla on `.env.local`: kolme ✓
+- [ ] `npm run keynote-tarkistus` koneella, jolla on `.env.local`: kaikki ✓
   - Kirjautumaton näyttö voi kuunnella yksityistä kanavaa
   - Kirjautumattoman viestit eivät päädy näytölle
   - Kirjautumaton ei pääse videokanavalle
+  - (migraation 0005 jälkeen) näyttö voi kuunnella `naytto`-kanavaa, eivätkä kirjautumattoman komennot tavoita sitä
+- [ ] Jos migraatio 0005 on ajettu ja uusi versio julkaistu: rekisteröi testinäyttö
+      `npm run nayttoavain -- --osoite https://www.raapustamo.fi keynote-testi`, aja SQL ja avaa näyttö tulostetulla
+      osoitteella (lisää `&tila=1`). Ilman avainta syke ei näy, mutta kaikki muu toimii.
 - [ ] Moderointi auki toisessa ikkunassa, jotta näyttöjen syke näkyy yläpalkissa
 
 ## 1. Editori ja näyttö ilman videota

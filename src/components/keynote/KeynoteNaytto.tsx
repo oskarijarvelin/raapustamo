@@ -11,6 +11,7 @@ import {
   type KeynoteViesti,
   type LavanViiva,
 } from "@/lib/keynote";
+import { lueNayttoavain } from "@/lib/nayttoavain";
 import { piirraViiva } from "@/lib/piirto";
 import { selainAsiakas } from "@/lib/supabase/selain";
 import { avaaLava, type Yhteydentila } from "./lavayhteys";
@@ -167,12 +168,18 @@ export default function KeynoteNaytto({ lava, naytaTila, lapinakyva }: Props) {
       if (tallennettu !== null && tallennettu > tila.versio) void synkronoi();
     }, TARKISTUSVALI);
 
-    // Syke: moderointi ja editori näkevät, että keynote-näyttö on elossa.
+    // Syke: moderointi ja editori näkevät, että keynote-näyttö on elossa. Vaatii näytön avaimen
+    // (npm run nayttoavain -- keynote-<lava>), jottei kukaan muu voi lähettää sykettä sen nimissä.
     const kaynnistetty = Date.now();
+    const tunnus = lavanNaytto(lava);
+    const nayttoavain = supabase ? lueNayttoavain(tunnus) : null;
+    if (supabase && !nayttoavain) console.warn(`Näytön ${tunnus} avain puuttuu: syke ei näy. Avaa asennusosoite (npm run nayttoavain).`);
     const syke = () =>
+      nayttoavain &&
       supabase
         ?.rpc("naytto_syke", {
-          naytto: lavanNaytto(lava),
+          naytto: tunnus,
+          avain: nayttoavain,
           syke_tiedot: {
             versio: process.env.NEXT_PUBLIC_VERSIO ?? "dev",
             layout: "keynote",

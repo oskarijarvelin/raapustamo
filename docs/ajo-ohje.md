@@ -38,8 +38,10 @@
   - [ ] Guided Access päälle, kotisivu `…/?kiosk=ipad-N`
   - [ ] Automaattinen lukitus pois, ilmoitukset pois, kirkkaus sopiva
   - [ ] Apple Pencil kiinnitetty narulla, varakynät latauksessa
+- [ ] Näytöt rekisteröity: `npm run nayttoavain -- --osoite https://www.raapustamo.fi led-1 keynote-lava-1`, SQL ajettu
+      ja asennusosoite avattu kerran jokaisen näytön selaimessa (README → Näytöt)
 - [ ] Playout-kone: selainlähde ja silta käynnistyvät automaattisesti (**AVOIN**: Windows vai macOS)
-- [ ] `npm run keynote-tarkistus`: kolme ✓
+- [ ] `npm run keynote-tarkistus`: kaikki ✓
 - [ ] Testipiirrokset ja testilavat siivottu
 - [ ] Kenraaliharjoitus tehty (vaihe 4)
 
@@ -70,7 +72,7 @@
 |---|---|---|
 | **Sopimaton piirros näkyy screenillä** | Moderoinnissa Hyväksytyt → **Piilota heti**, tai **hätäpysäytys** yläpalkista ("Näyttö live · pysäytä"). Resolume-operaattori voi aina ohittaa klipin | Selvitä, miten piirros hyväksyttiin. Kirjaa tapaus |
 | Screen musta tai jumissa | Resolume-operaattori ohittaa klipin | Tarkista syke. Lataa selainlähde uudelleen playout-koneella |
-| LED-1 punainen moderoinnissa | Tarkista playout-kone: onko selain käynnissä, onko verkko | Näyttö pyörii välimuistista myös ilman verkkoa, mutta ei lähetä sykettä |
+| LED-1 punainen moderoinnissa | Tarkista playout-kone: onko selain käynnissä, onko verkko | Näyttö pyörii välimuistista myös ilman verkkoa, mutta ei lähetä sykettä. Jos selaimen tiedot on tyhjennetty, avain puuttuu: avaa asennusosoite uudelleen (konsolissa varoitus "avain puuttuu") |
 | LED-1 oranssi, "silta ei vastaa" | Piirrokset kiertävät edelleen (turvallinen tila) | Käynnistä silta uudelleen: `node silta/silta.mjs` |
 | Uudet piirrokset eivät tule screenille | Tarkista, että ne on hyväksytty ja että näyttö ei ole tauolla | Data tarkistetaan 20 s välein. Lataa selainlähde uudelleen |
 | Kioski: "Kioskia ei ole tunnistettu" | Avaa kioskin asennusosoite uudelleen (tekninen vastaava) | `KIOSKI_SALAISUUS` ei saa muuttua festivaalin aikana |

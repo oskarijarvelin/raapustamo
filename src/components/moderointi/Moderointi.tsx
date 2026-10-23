@@ -6,7 +6,7 @@ import PiirrosCanvas from "@/components/PiirrosCanvas";
 import Kirjautuminen from "@/components/kirjautuminen/Kirjautuminen";
 import { moderointijono } from "@/lib/jono";
 import { kellonaika, piirraPiirros, sovitaCanvas, tunnus } from "@/lib/piirto";
-import { NAYTTOKANAVA, selainAsiakas } from "@/lib/supabase/selain";
+import { NAYTTOKANAVA, NAYTTOKANAVAN_ASETUKSET, selainAsiakas } from "@/lib/supabase/selain";
 import { ikaTekstina, sykkeenTila, type NaytonSyke, type SykkeenTila } from "@/lib/syke";
 import type { AiArvio, PiirroksenTila, Piirros } from "@/lib/tyypit";
 import "./moderointi.css";
@@ -102,7 +102,7 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
       .then(({ data }) => !peruttu && setTauko(Boolean(data?.arvo?.tauko)));
     supabase
       .from("naytot")
-      .select("*")
+      .select("tunnus, viimeksi_nahty, tiedot")
       .then(({ data }) => !peruttu && data && setNaytot(new Map((data as NaytonSyke[]).map((n) => [n.tunnus, n]))));
 
     const muutokset = supabase
@@ -124,7 +124,10 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
         if (syke.tunnus) setNaytot((vanhat) => new Map(vanhat).set(syke.tunnus, syke));
       })
       .subscribe();
-    nayttokanava.current = supabase.channel(NAYTTOKANAVA).subscribe();
+    // Yksityinen kanava: lähettäminen vaatii moderaattorin tunnisteen (migraatio 0005).
+    const kanava = supabase.channel(NAYTTOKANAVA, NAYTTOKANAVAN_ASETUKSET);
+    nayttokanava.current = kanava;
+    void supabase.realtime.setAuth().then(() => !peruttu && kanava.subscribe());
 
     return () => {
       peruttu = true;

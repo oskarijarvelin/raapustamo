@@ -18,7 +18,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
 | `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
-| `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
+| `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` · `?avain=…` (kerran, ks. [Näytöt](#6-näytöt)) |
 | `/keynote` | Keynote-puhuja (iPad + Apple Pencil) | Kirjautuminen (esiintyjät ja moderaattorit). `?lava=lava-1` · `?suhde=16:9` (oletus: koko ruutu) · `?video=1` (esitysmateriaali taustaksi) · `?kieli=fi\|en`. Ks. [Keynote](#5-keynote) |
 | `/keynote/naytto` | Keynote-näyttö (projektori, screen tai Resolumen layer) | `?lava=lava-1` · `?tila=1` (yhteyden tila kulmassa) · `?lapinakyva=1` (läpinäkyvä tausta) |
 | `/keynote/lahetin` | Kaappauskone | Kirjautuminen. Esitysmateriaali kaappauslaitteelta tai ruudunjaosta editorin taustaksi. `?lava=lava-1` |
@@ -29,7 +29,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 ### 1. Supabase
 
 1. Luo projekti osoitteessa [supabase.com](https://supabase.com) **EU-alueelle** (esim. Frankfurt tai Tukholma).
-2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`, `0003_…`, `0004_…`).
+2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…` – `0005_…`).
 3. Luo moderaattorit kohdassa **Authentication → Users → Add user** (sähköposti ja salasana, "Auto Confirm User").
 4. Anna käyttäjille moderointioikeus SQL-editorissa:
 
@@ -143,6 +143,18 @@ Festivaalin yleisessä verkossa laitteiden välinen eristys (client isolation) e
 TURN-palvelin (esim. coturn kaappauskoneella): `NEXT_PUBLIC_TURN_URL`, `NEXT_PUBLIC_TURN_KAYTTAJA` ja
 `NEXT_PUBLIC_TURN_SALASANA`. Lähettimen *Editorit*-listassa näkyvät yhdistetyt iPadit, bittinopeus ja viive.
 
+### 6. Näytöt
+
+Näyttöjen syke vaatii näyttökohtaisen avaimen, jottei kukaan muu voi lähettää sykettä näytön nimissä.
+
+```bash
+npm run nayttoavain -- --osoite https://www.raapustamo.fi led-1 keynote-lava-1
+```
+
+Skripti tulostaa jokaiselle näytölle asennusosoitteen ja rekisteröinnin SQL:n. Aja SQL Supabasen SQL-editorissa ja avaa
+asennusosoite kerran näytön selaimessa (lisää muut parametrit, esim. `&skaala=1&silta=…`). Avain tallentuu laitteelle ja
+poistuu osoiteriviltä. Uusi ajo luo uudet avaimet, ja vanhat lakkaavat toimimasta.
+
 ## Arkkitehtuuri lyhyesti
 
 - **Next.js** (App Router), hostaus **Vercel**. Funktiot ajetaan Dublinissa (`dub1`, [vercel.json](vercel.json)) Supabase-projektin (`eu-west-1`, Irlanti) vieressä. Jos Supabase-projekti vaihtuu toiselle alueelle, vaihda myös tämä.
@@ -154,8 +166,8 @@ TURN-palvelin (esim. coturn kaappauskoneella): `NEXT_PUBLIC_TURN_URL`, `NEXT_PUB
   - Oletuslayout on **avaruus** ([src/components/naytto/avaruus.ts](src/components/naytto/avaruus.ts), laskenta [src/lib/avaruus.ts](src/lib/avaruus.ts)): `?maara=6` piirrosta ajelehtii tähtikentässä eri kokoisina ja syvyyksissä. Uusi piirros syntyy `vaihto / 3` sekunnin välein vapaimpaan kohtaan, ja se glitchaa pois kuljettuaan oman matkansa (noin `maara × vaihto / 3` sekuntia). Nostetut ovat isompia, eli lähempänä. Kun näyttö on tauolla tai klippi ei ole screenillä, aika pysähtyy.
   - Hätäpysäytys tulee voimaan heti. Paluu animoidaan: taukoruutu glitchaa, sulkeutuu valoviivaksi ja sammuu, tähdet syöksyvät hyperavaruusefektinä ja piirrokset piirtyvät uudelleen esiin. Kehityksessä tauon voi kokeilla konsolista: `raapustamo.tauko(true)`.
   - Hyväksytyt piirrokset tulevat Realtime-muutoksina.
-  - Hylkäys, piilotus ja hätäpysäytys tulevat näytölle lisäksi Realtime-broadcastina (`naytto`-kanava), koska RLS piilottaa hylätyt rivit anonyymeiltä.
-  - Data tarkistetaan 20 sekunnin välein.
+  - Hylkäys, piilotus ja hätäpysäytys tulevat näytölle lisäksi Realtime-broadcastina, koska RLS piilottaa hylätyt rivit anonyymeiltä. `naytto`-kanava on yksityinen: näytöt saavat kuunnella, mutta vain moderaattorit lähettää.
+  - Data ja hätäpysäytyksen tila tarkistetaan tietokannasta 20 sekunnin välein, joten saamatta jäänyt komento korjaantuu viimeistään silloin.
   - Hyväksytyt piirrokset tallennetaan selaimen välimuistiin, ja Service Worker (`public/naytto-sw.js`, vain tuotannossa) tallentaa sivun ja sen tiedostot. Näyttö käynnistyy siis uudelleen myös ilman verkkoa.
   - Näyttö lähettää 30 sekunnin välein sykkeen, joka näkyy moderoinnin yläpalkissa: sininen = ok, oranssi = viive, verkkokatko tai virheitä, punainen = ei vastaa.
   - Näyttö palautuu itse: jos animaatio jumittuu yli 30 sekunniksi tai virheitä tulee yli 20 minuutissa, sivu ladataan uudelleen.

@@ -5,7 +5,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import qrcode from "qrcode-generator";
 import { seuraavaPiirros } from "@/lib/jono";
 import { piirraPiirros, tunnus } from "@/lib/piirto";
-import { NAYTTOKANAVA, selainAsiakas } from "@/lib/supabase/selain";
+import { lueNayttoavain } from "@/lib/nayttoavain";
+import { NAYTTOKANAVA, NAYTTOKANAVAN_ASETUKSET, selainAsiakas } from "@/lib/supabase/selain";
 import type { NaytettavaPiirros } from "@/lib/tyypit";
 import { luoAvaruus, type Avaruus } from "./avaruus";
 import { glitch, pehmea } from "./efektit";
@@ -346,6 +347,10 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
 
     async function lataa() {
       if (!supabase) return;
+      // Hätäpysäytyksen lopullinen totuus on tietokannassa. Se tarkistetaan joka kerta, jottei
+      // saamatta jäänyt komento jätä näyttöä väärään tilaan pidemmäksi aikaa kuin yhdeksi väliksi.
+      const { data: asetus } = await supabase.from("asetukset").select("arvo").eq("avain", "naytto").single();
+      if (asetus) setTauko(Boolean(asetus.arvo?.tauko));
       const { data, error } = await supabase.from("piirrokset").select(KENTAT).eq("tila", "hyvaksytty");
       if (error || !data) return console.warn("Piirrosten haku epäonnistui – jatketaan välimuistista", error);
       const tuoreet = new Map((data as NaytettavaPiirros[]).map((p) => [p.id, p]));
@@ -402,13 +407,18 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
     merkitseSilta();
     paluuRef.current = tuliNakyviin;
 
-    // Syke: moderointi näkee, että screen on elossa ja mitä siinä näkyy.
+    // Syke: moderointi näkee, että screen on elossa ja mitä siinä näkyy. Syke vaatii näytön avaimen
+    // (npm run nayttoavain), jottei kukaan muu voi lähettää sykettä tämän näytön nimissä.
     const kaynnistetty = Date.now();
+    const nayttoavain = lueNayttoavain(nayttoTunnus);
+    if (!nayttoavain) console.warn(`Näytön ${nayttoTunnus} avain puuttuu: syke ei näy moderoinnissa. Avaa asennusosoite (npm run nayttoavain).`);
     const syke = () => {
+      if (!nayttoavain) return;
       const minuuttiSitten = Date.now() - 60_000;
       supabase
         ?.rpc("naytto_syke", {
           naytto: nayttoTunnus,
+          avain: nayttoavain,
           syke_tiedot: {
             versio: process.env.NEXT_PUBLIC_VERSIO ?? "dev",
             layout,
@@ -437,13 +447,6 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
     let muutokset: RealtimeChannel | null = null;
     let komennot: RealtimeChannel | null = null;
     if (supabase) {
-      supabase
-        .from("asetukset")
-        .select("arvo")
-        .eq("avain", "naytto")
-        .single()
-        .then(({ data }) => setTauko(Boolean(data?.arvo?.tauko)));
-
       // Hyväksytyt piirrokset tulevat realtime-muutoksina. Hylkäys/piilotus ei näy anonyymille
       // RLS:n vuoksi, joten moderointi lähettää siitä erillisen broadcast-komennon.
       muutokset = supabase
@@ -462,11 +465,13 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
           if (rivi.avain === "naytto") setTauko(Boolean(rivi.arvo.tauko));
         })
         .subscribe();
-      komennot = supabase
-        .channel(NAYTTOKANAVA)
+      // Yksityinen kanava: kuunnella saa kuka tahansa, lähettää vain moderaattorit (migraatio 0005).
+      const kanava = supabase
+        .channel(NAYTTOKANAVA, NAYTTOKANAVAN_ASETUKSET)
         .on("broadcast", { event: "piilota" }, ({ payload }) => poista(payload.id))
-        .on("broadcast", { event: "tauko" }, ({ payload }) => setTauko(Boolean(payload.tauko)))
-        .subscribe();
+        .on("broadcast", { event: "tauko" }, ({ payload }) => setTauko(Boolean(payload.tauko)));
+      komennot = kanava;
+      void supabase.realtime.setAuth().then(() => komennot === kanava && kanava.subscribe());
     }
 
     return () => {
@@ -481,6 +486,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
       removeEventListener("unhandledrejection", virheKuuntelija);
       if (muutokset) supabase?.removeChannel(muutokset);
       if (komennot) supabase?.removeChannel(komennot);
+      komennot = null;
     };
   }, [supabase, layout, koko, solujenMaara, vaihtoS, maara, nayttoTunnus, uudelleenlatausMin, siltaUrl]);
 
