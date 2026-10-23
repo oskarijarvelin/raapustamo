@@ -12,6 +12,8 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Raapustamo – Lumo Art & Tech Festival",
   description: "Piirrä terveisesi Lumo Art & Tech Festivalin LED-screenille.",
+  // Ei hakukoneisiin (myös next.config.ts:n X-Robots-Tag-otsake).
+  robots: { index: false, follow: false, nocache: true },
 };
 
 export const viewport: Viewport = {
