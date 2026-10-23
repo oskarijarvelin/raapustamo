@@ -11,7 +11,7 @@ const teksti = (arvo: string | string[] | undefined) => (typeof arvo === "string
 
 /**
  * LED-screenin näkymä. Parametrit:
- * ?layout=trio|solo|seina · ?vaihto=12 (s) · ?qr=0 · ?osoite=raapustamo.fi · ?qr-url=… · ?skaala=1
+ * ?layout=avaruus|trio|solo|seina · ?vaihto=12 (s) · ?maara=6 (avaruus) · ?qr=0 · ?osoite=raapustamo.fi · ?qr-url=… · ?skaala=1
  * ?tunnus=led-1 (syke moderointiin) · ?uudelleenlataus=240 (min, 0 = pois)
  * ?silta=http://localhost:7400 (Resolume-silta, ks. silta/README.md)
  */
@@ -19,14 +19,16 @@ export default async function Nayttosivu({ searchParams }: { searchParams: Promi
   const p = await searchParams;
   const layout = teksti(p.layout);
   const vaihto = Number(teksti(p.vaihto));
+  const maara = Number(teksti(p.maara));
   const skaala = Number(teksti(p.skaala));
   const tunnus = teksti(p.tunnus)?.toLowerCase();
   const uudelleenlataus = Number(teksti(p.uudelleenlataus));
   const silta = teksti(p.silta);
   return (
     <Naytto
-      layout={layout === "solo" || layout === "seina" ? (layout as Layout) : "trio"}
+      layout={layout === "trio" || layout === "solo" || layout === "seina" ? (layout as Layout) : "avaruus"}
       vaihtoS={Number.isFinite(vaihto) && vaihto >= 4 ? vaihto : 12}
+      maara={Number.isInteger(maara) && maara >= 2 && maara <= 12 ? maara : 6}
       naytaQr={teksti(p.qr) !== "0"}
       qrUrl={teksti(p["qr-url"]) ?? null}
       osoite={teksti(p.osoite) ?? "raapustamo.fi"}

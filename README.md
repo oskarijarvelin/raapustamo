@@ -16,7 +16,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
 | `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
-| `/naytto` | LED-screen (Resolume) | `?layout=trio\|solo\|seina` · `?vaihto=12` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
+| `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
 | `POST /api/piirrokset` | Piirtonäkymä | Validointi, kioskiavain, Turnstile ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
@@ -87,6 +87,8 @@ Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria sama
   - Anonyymit käyttäjät näkevät vain hyväksytyt piirrokset.
   - Vain `moderaattorit`-taulun käyttäjät voivat moderoida.
 - **Näyttö**:
+  - Oletuslayout on **avaruus** ([src/components/naytto/avaruus.ts](src/components/naytto/avaruus.ts), laskenta [src/lib/avaruus.ts](src/lib/avaruus.ts)): `?maara=6` piirrosta ajelehtii tähtikentässä eri kokoisina ja syvyyksissä. Uusi piirros syntyy `vaihto / 3` sekunnin välein vapaimpaan kohtaan, ja se glitchaa pois kuljettuaan oman matkansa (noin `maara × vaihto / 3` sekuntia). Nostetut ovat isompia, eli lähempänä. Kun näyttö on tauolla tai klippi ei ole screenillä, aika pysähtyy.
+  - Hätäpysäytys tulee voimaan heti. Paluu animoidaan: taukoruutu glitchaa, sulkeutuu valoviivaksi ja sammuu, tähdet syöksyvät hyperavaruusefektinä ja piirrokset piirtyvät uudelleen esiin. Kehityksessä tauon voi kokeilla konsolista: `raapustamo.tauko(true)`.
   - Hyväksytyt piirrokset tulevat Realtime-muutoksina.
   - Hylkäys, piilotus ja hätäpysäytys tulevat näytölle lisäksi Realtime-broadcastina (`naytto`-kanava), koska RLS piilottaa hylätyt rivit anonyymeiltä.
   - Data tarkistetaan 20 sekunnin välein.

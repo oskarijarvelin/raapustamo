@@ -7,14 +7,18 @@ import { seuraavaPiirros } from "@/lib/jono";
 import { piirraPiirros, tunnus } from "@/lib/piirto";
 import { NAYTTOKANAVA, selainAsiakas } from "@/lib/supabase/selain";
 import type { NaytettavaPiirros } from "@/lib/tyypit";
+import { luoAvaruus, type Avaruus } from "./avaruus";
+import { glitch, pehmea } from "./efektit";
 import "./naytto.css";
 
-export type Layout = "trio" | "solo" | "seina";
+export type Layout = "avaruus" | "trio" | "solo" | "seina";
 
 interface Props {
   layout: Layout;
-  /** Piirrosten vaihtoväli sekunteina */
+  /** Piirrosten vaihtoväli sekunteina (avaruudessa: uusi piirros vaihtoS / 3 sekunnin välein) */
   vaihtoS: number;
+  /** Avaruus: montako piirrosta on näkyvissä yhtä aikaa */
+  maara: number;
   naytaQr: boolean;
   /** QR-koodin osoite; oletuksena tämän palvelimen piirtonäkymä */
   qrUrl: string | null;
@@ -43,6 +47,9 @@ const JUMIRAJA = 30_000;
 /** Näin monta virhettä minuutissa → uudelleenlataus */
 const VIRHERAJA = 20;
 const KENTAT = "id, nro, luotu, viivat, nostettu, nayttokerrat, viimeksi_naytetty";
+/** Tauolta paluun animaation kesto (ks. naytto.css: tauko-sulkeutuu) */
+const PALUU = 1400;
+const SIVUPALKKI = 576;
 
 type Vaihe = "tyhja" | "ulos" | "piirtyy" | "valmis" | "mikro";
 
@@ -63,24 +70,6 @@ interface Solu {
 }
 
 type Tiedot = { nro: number; uusi: boolean } | null;
-
-// --- Glitch: vaakasuorat kaistat siirtyvät sivuttain ---
-
-function glitch(ctx: CanvasRenderingContext2D, lahde: HTMLCanvasElement, voima: number) {
-  const { width: w, height: h } = lahde;
-  ctx.clearRect(0, 0, w, h);
-  ctx.globalAlpha = 1 - Math.max(0, voima - 0.6) * 2.5;
-  let y = 0;
-  while (y < h) {
-    const kaista = 6 + Math.floor(Math.random() * 70);
-    const siirto = Math.random() < 0.4 ? (Math.random() - 0.5) * 2 * voima * w * 0.14 : 0;
-    ctx.drawImage(lahde, 0, y, w, kaista, siirto, y, w, kaista);
-    y += kaista;
-  }
-  ctx.globalAlpha = 1;
-}
-
-const pehmea = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 function lueValimuisti(): NaytettavaPiirros[] {
   try {
@@ -121,19 +110,43 @@ function QrKoodi({ url }: { url: string }) {
   );
 }
 
-export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin, siltaUrl }: Props) {
+export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin, siltaUrl }: Props) {
   const supabase = useMemo(() => selainAsiakas(), []);
-  const solujenMaara = layout === "trio" ? 3 : layout === "solo" ? 1 : 12;
+  const solujenMaara = layout === "avaruus" ? 0 : layout === "trio" ? 3 : layout === "solo" ? 1 : 12;
   const koko = layout === "seina" ? 576 : 1152;
+  const avaruusLeveys = naytaQr ? LEVEYS - SIVUPALKKI : LEVEYS;
 
   const juuriRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const avaruusRef = useRef<HTMLCanvasElement>(null);
+  const [avaruusTyhja, setAvaruusTyhja] = useState(true);
   const [tiedot, setTiedot] = useState<Tiedot[]>(() => Array(solujenMaara).fill(null));
   const [tauko, setTauko] = useState(false);
   const taukoRef = useRef(false);
   taukoRef.current = tauko;
   const [muunnos, setMuunnos] = useState({ s: skaala ?? 1, x: 0, y: 0 });
   const [qrOsoite, setQrOsoite] = useState(qrUrl ?? "");
+
+  // Hätäpysäytys tulee voimaan heti. Paluu animoidaan: taukoruutu glitchaa ja sulkeutuu
+  // valoviivaksi, ja samaan aikaan piirrokset piirtyvät uudelleen esiin sen alla.
+  const [taukoTila, setTaukoTila] = useState<"pois" | "paalla" | "poistuu">("pois");
+  const paluuRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (tauko) setTaukoTila("paalla");
+    else setTaukoTila((vanha) => (vanha === "paalla" ? "poistuu" : vanha));
+  }, [tauko]);
+  useEffect(() => {
+    if (taukoTila !== "poistuu") return;
+    paluuRef.current();
+    const ajastin = setTimeout(() => setTaukoTila("pois"), PALUU);
+    return () => clearTimeout(ajastin);
+  }, [taukoTila]);
+
+  // Kehityksessä tauon voi kokeilla konsolista ilman moderointia: raapustamo.tauko(true)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    (window as unknown as { raapustamo: object }).raapustamo = { tauko: setTauko };
+  }, []);
 
   useEffect(() => {
     if (!qrUrl) setQrOsoite(`${location.origin}/`);
@@ -173,6 +186,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     });
 
     const piirrokset = new Map<string, NaytettavaPiirros>(lueValimuisti().map((p) => [p.id, p]));
+    let avaruus: Avaruus | null = null;
 
     // Resolume-silta kertoo, onko Raapustamo-klippi screenillä. Ilman siltaa tai sen yhteyttä
     // oletetaan, että näyttö näkyy aina, jotta piirrokset kiertävät joka tapauksessa.
@@ -189,6 +203,18 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       supabase?.rpc("merkitse_naytetyksi", { piirros: p.id }).then(({ error }) => error && console.warn("Näyttökerran kirjaus epäonnistui", error));
     }
     const paivitaTiedot = () => setTiedot(solut.map((s) => (s.piirros ? { nro: s.piirros.nro, uusi: s.uusi } : null)));
+
+    if (layout === "avaruus" && avaruusRef.current) {
+      avaruus = luoAvaruus({
+        canvas: avaruusRef.current,
+        maara,
+        vali: (vaihtoS * 1000) / 3,
+        valitse: (poissulje) => seuraavaPiirros([...piirrokset.values()], poissulje),
+        kirjaa: kirjaaNaytetyksi,
+        aktiivinen: () => !taukoRef.current && naytetaan(),
+        muuttui: (nrot) => setAvaruusTyhja(nrot.length === 0),
+      });
+    }
 
     function piirraSisalto(s: Solu, edistyminen: number) {
       if (!s.piirros) return;
@@ -254,6 +280,11 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     let viimeisinKehys = performance.now();
     const kehys = (nyt: number) => {
       viimeisinKehys = nyt;
+      try {
+        avaruus?.kehys(nyt);
+      } catch (virhe) {
+        kirjaaVirhe(virhe);
+      }
       for (const s of solut) {
         try {
           paivitaSolu(s, nyt);
@@ -292,7 +323,8 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     }
 
     function kierros() {
-      if (taukoRef.current || !naytetaan()) return;
+      // Avaruudessa piirrokset vaihtuvat omaan tahtiinsa (luoAvaruus).
+      if (avaruus || taukoRef.current || !naytetaan()) return;
       const kohteet = layout === "seina" ? [...solut].sort(() => Math.random() - 0.5).slice(0, 3) : solut;
       kohteet.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s), i * 700));
     }
@@ -301,12 +333,14 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     function poista(id: string) {
       piirrokset.delete(id);
       kirjoitaValimuisti([...piirrokset.values()]);
+      avaruus?.poista(id);
       for (const s of solut) {
         if (s.piirros?.id === id || s.seuraava?.id === id) vaihdaSeuraavaan(s, true);
       }
     }
 
     function tayta() {
+      avaruus?.tayta();
       for (const s of solut) if (!s.piirros && !s.seuraava) vaihdaSeuraavaan(s);
     }
 
@@ -327,8 +361,9 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
     const paivitys = setInterval(lataa, PAIVITYSVALI);
     let kierrokset = setInterval(kierros, vaihtoS * 1000);
 
-    /** Klippi tuli screenille: piirrokset piirtyvät esiin uudelleen ja kierros alkaa alusta. */
+    /** Klippi tuli screenille tai näyttö palasi tauolta: piirrokset piirtyvät esiin uudelleen ja kierros alkaa alusta. */
     function tuliNakyviin() {
+      avaruus?.paluu();
       solut.forEach((s, i) =>
         setTimeout(() => {
           if (s.piirros && s.kirjaamatta) kirjaaNaytetyksi(s.piirros);
@@ -365,6 +400,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       siltaLahde.onerror = () => paivitaSilta(false, silta.nakyvissa);
     }
     merkitseSilta();
+    paluuRef.current = tuliNakyviin;
 
     // Syke: moderointi näkee, että screen on elossa ja mitä siinä näkyy.
     const kaynnistetty = Date.now();
@@ -379,7 +415,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
             tauko: taukoRef.current,
             verkossa: navigator.onLine,
             piirroksia: piirrokset.size,
-            naytolla: solut.flatMap((s) => (s.piirros ? [s.piirros.nro] : [])),
+            naytolla: avaruus ? avaruus.naytolla() : solut.flatMap((s) => (s.piirros ? [s.piirros.nro] : [])),
             kaynnissa_min: Math.round((Date.now() - kaynnistetty) / 60_000),
             virheita_min: virheet.filter((t) => t > minuuttiSitten).length,
             silta: siltaUrl ? { yhteys: silta.yhteys, nakyvissa: silta.nakyvissa } : null,
@@ -446,7 +482,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       if (muutokset) supabase?.removeChannel(muutokset);
       if (komennot) supabase?.removeChannel(komennot);
     };
-  }, [supabase, layout, koko, solujenMaara, vaihtoS, nayttoTunnus, uudelleenlatausMin, siltaUrl]);
+  }, [supabase, layout, koko, solujenMaara, vaihtoS, maara, nayttoTunnus, uudelleenlatausMin, siltaUrl]);
 
   // Service Worker: näyttö käynnistyy välimuistista myös ilman verkkoa (vain tuotannossa,
   // koska kehityspalvelimen tiedostot muuttuvat jatkuvasti).
@@ -487,8 +523,26 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       <div
         className="lava"
         data-layout={layout}
-        style={{ transform: `translate(${muunnos.x}px, ${muunnos.y}px) scale(${muunnos.s})` }}
+        style={{
+          transform: `translate(${muunnos.x}px, ${muunnos.y}px) scale(${muunnos.s})`,
+          ...(layout === "avaruus" && { gridTemplateColumns: naytaQr ? `${avaruusLeveys}px ${SIVUPALKKI}px` : `${LEVEYS}px` }),
+        }}
       >
+        {layout === "avaruus" && (
+          <div className="avaruus">
+            <canvas ref={avaruusRef} width={avaruusLeveys} height={KORKEUS} />
+            {avaruusTyhja && (
+              <div className="tyhja">
+                <span className="otsikko">
+                  Sinun piirroksesi
+                  <br />
+                  tähän?
+                </span>
+                <span>Your drawing here?</span>
+              </div>
+            )}
+          </div>
+        )}
         {layout === "solo" && (
           <section className="teksti-alue">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -522,8 +576,8 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
             </div>
           </aside>
         )}
-        {tauko && (
-          <div className="tauko">
+        {taukoTila !== "pois" && (
+          <div className={taukoTila === "poistuu" ? "tauko poistuu" : "tauko"}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="logo" src="/brand/latf-logo-vaaka.png" alt="Lumo Art & Tech Festival" />
             <div className="qr">
@@ -540,7 +594,7 @@ export default function Naytto({ layout, vaihtoS, naytaQr, qrUrl, osoite, skaala
       </div>
       {muunnos.s !== 1 && (
         <div className="esikatselu-info">
-          Esikatselu {Math.round(muunnos.s * 100)} % · 4032 × 1152 · ?layout=trio|solo|seina · ?skaala=1
+          Esikatselu {Math.round(muunnos.s * 100)} % · 4032 × 1152 · ?layout=avaruus|trio|solo|seina · ?skaala=1
         </div>
       )}
     </div>
