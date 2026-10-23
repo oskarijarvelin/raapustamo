@@ -17,8 +17,9 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
 | `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
-| `/keynote` | Keynote-puhuja (iPad + Apple Pencil) | Kirjautuminen (esiintyjät ja moderaattorit). `?lava=lava-1` · `?suhde=16:9` (oletus: koko ruutu) · `?kieli=fi\|en`. Ks. [Keynote](#5-keynote) |
-| `/keynote/naytto` | Keynote-näyttö (projektori tai screen) | `?lava=lava-1` · `?tila=1` (yhteyden tila kulmassa) |
+| `/keynote` | Keynote-puhuja (iPad + Apple Pencil) | Kirjautuminen (esiintyjät ja moderaattorit). `?lava=lava-1` · `?suhde=16:9` (oletus: koko ruutu) · `?video=1` (esitysmateriaali taustaksi) · `?kieli=fi\|en`. Ks. [Keynote](#5-keynote) |
+| `/keynote/naytto` | Keynote-näyttö (projektori, screen tai Resolumen layer) | `?lava=lava-1` · `?tila=1` (yhteyden tila kulmassa) · `?lapinakyva=1` (läpinäkyvä tausta) |
+| `/keynote/lahetin` | Kaappauskone | Kirjautuminen. Esitysmateriaali kaappauslaitteelta tai ruudunjaosta editorin taustaksi. `?lava=lava-1` |
 | `POST /api/piirrokset` | Piirtonäkymä | Validointi, kioskiavain, Turnstile ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
@@ -26,7 +27,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 ### 1. Supabase
 
 1. Luo projekti osoitteessa [supabase.com](https://supabase.com) **EU-alueelle** (esim. Frankfurt tai Tukholma).
-2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`, `0003_…`).
+2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`, `0003_…`, `0004_…`).
 3. Luo moderaattorit kohdassa **Authentication → Users → Add user** (sähköposti ja salasana, "Auto Confirm User").
 4. Anna käyttäjille moderointioikeus SQL-editorissa:
 
@@ -109,6 +110,36 @@ Editorissa:
 - Silmä-napista piirroksen saa piilotettua näytöltä (näyttö häivyttää sen pois). Piilotettuna editorin reunat ovat oranssit.
 - Tyhjennys vaatii toisen napautuksen, ja senkin voi kumota.
 - Vasemmassa alakulmassa näkyy yhteyden tila (punainen piste = näytöllä) ja keynote-näytön syke.
+- Paletissa on LED-värien lisäksi musta, yönsininen ja metsänvihreä vaaleiden diojen päälle piirtämiseen.
+
+#### Piirtäminen esitysmateriaalin päälle
+
+Yleisön kuva yhdistetään Resolumessa, ja esitysmateriaali näkyy iPadilla vain piirtäjälle:
+
+```
+Esityskone / Resolume ──HDMI──► kaappauskortti ──USB──► kaappauskone (Chrome: /keynote/lahetin)
+                                                          │ WebRTC suoraan lähiverkossa
+                                                          ▼
+                                          iPad (Wi-Fi): /keynote?video=1 – video alustan alla
+Resolume: esitysmateriaali + /keynote/naytto?lapinakyva=1 läpinäkyvänä layerina päällä
+```
+
+1. Aja migraatio `0004_keynote_video.sql` (videon yhteydenmuodostuksen kanava, vain esiintyjät ja moderaattorit).
+2. Kaappauskoneella: avaa `/keynote/lahetin?lava=lava-1`, kirjaudu ja valitse lähde. Kaappauskortti näkyy kamerana
+   (nimet tulevat näkyviin napista *Näytä laitteiden nimet*). Vaihtoehtoisesti *Jaa ruutu tai ikkuna*, jolloin esityskone
+   voi itse toimia lähettimenä. *Testikuva* (ruudukko ja kello) tarkistaa yhteyden, kohdistuksen ja viiveen ilman
+   kaappauslaitetta: kuvaa lähettimen ja iPadin kellot samaan kuvaan.
+3. iPadilla: `/keynote?lava=lava-1&video=1`. Tyhjä alusta ottaa videon kuvasuhteen (ennen videon tuloa 16:9), jolloin
+   piirros osuu Resolumessa samaan kohtaan. Jos alustalle on jo piirretty eri kuvasuhteella, editori pyytää tyhjentämään sen.
+4. Resolumessa keynote-näyttö layeriksi esitysmateriaalin päälle: `/keynote/naytto?lava=lava-1&lapinakyva=1`
+   selainlähteestä, joka välittää alfakanavan (OBS:n browser source → Spout/Syphon/NDI, tai SpoutBrowser). Jos alfa
+   katoaa matkalla, käytä mustaa taustaa (ilman `?lapinakyva`) ja Add/Screen-sekoitusta: silloin vaaleilla dioilla
+   tummat ja vaaleat viivat eivät kuitenkaan erotu oikein.
+
+Verkko: lavalle oma 5 GHz:n Wi-Fi (jossa on internet Supabasea varten) ja kaappauskone siihen kaapelilla.
+Festivaalin yleisessä verkossa laitteiden välinen eristys (client isolation) estää suoran yhteyden. Silloin tarvitaan
+TURN-palvelin (esim. coturn kaappauskoneella): `NEXT_PUBLIC_TURN_URL`, `NEXT_PUBLIC_TURN_KAYTTAJA` ja
+`NEXT_PUBLIC_TURN_SALASANA`. Lähettimen *Editorit*-listassa näkyvät yhdistetyt iPadit, bittinopeus ja viive.
 
 ## Arkkitehtuuri lyhyesti
 
@@ -139,7 +170,8 @@ Editorissa:
   - Editori tallentaa lavan tilan `lavat`-tauluun muutosten jälkeen (enintään 0,7 s viiveellä), joten editori ja näyttö palautuvat uudelleenlatauksesta.
   - Valmiit muutokset (viiva, kumoaminen, tyhjennys, piilotus) ovat versioituja. Jos näytöltä puuttuu versioita, se hakee tallennetun tilan. Tallennuksen jälkeen editori lähettää versionumeron, ja näyttö tarkistaa version lisäksi 20 sekunnin välein.
   - Keynote-näyttö lähettää sykkeen tunnuksella `keynote-<lava>`. Syke näkyy moderoinnin yläpalkissa ja editorissa.
-  - Kehityksessä ilman Supabasea editori ja näyttö toimivat saman selaimen välilehdissä (BroadcastChannel ja localStorage).
+  - Esitysmateriaalin video ([src/components/keynote/video.ts](src/components/keynote/video.ts)) kulkee WebRTC:llä suoraan lähettimeltä iPadille. Yhteydenmuodostus (tarjous, vastaus ja ICE-ehdokkaat) kulkee yksityisellä kanavalla `keynote-video:<lava>`, jota anonyymit eivät näe, koska viesteissä on lähiverkon osoitteita. Selain ei saa hakea paikallisesta http-osoitteesta HTTPS-sivulla, joten erillistä mediapalvelinta ei käytetä. Video: H.264 ensin (iPadin rautapurku), enintään 6 Mbit/s ja 30 fps, `contentHint: detail` ja `maintain-resolution`, jotta diojen teksti pysyy terävänä.
+  - Kehityksessä ilman Supabasea editori, näyttö ja lähetin toimivat saman selaimen välilehdissä (BroadcastChannel ja localStorage).
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
 ## Seuraavaksi

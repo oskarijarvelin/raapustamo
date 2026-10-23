@@ -20,13 +20,15 @@ interface Props {
   lava: string;
   /** `?tila=1`: yhteyden tila näytön kulmassa (asennus ja testaus) */
   naytaTila: boolean;
+  /** `?lapinakyva=1`: läpinäkyvä tausta, jolloin näytön voi kerrostaa Resolumessa esitysmateriaalin päälle */
+  lapinakyva: boolean;
 }
 
 /** Tallennetun tilan versio tarkistetaan näin usein siltä varalta, että viestejä on kadonnut. */
 const TARKISTUSVALI = 20_000;
 const SYKEVALI = 30_000;
 
-export default function KeynoteNaytto({ lava, naytaTila }: Props) {
+export default function KeynoteNaytto({ lava, naytaTila, lapinakyva }: Props) {
   const supabase = useMemo(() => selainAsiakas(), []);
   const juuriRef = useRef<HTMLDivElement>(null);
   const alustaRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,12 @@ export default function KeynoteNaytto({ lava, naytaTila }: Props) {
   const [nakyvissa, setNakyvissa] = useState(true);
   const [yhteydenTila, setYhteydenTila] = useState<Yhteydentila>("yhdistetaan");
   const [versio, setVersio] = useState(0);
+
+  useEffect(() => {
+    if (!lapinakyva) return;
+    document.documentElement.classList.add("lapinakyva");
+    return () => document.documentElement.classList.remove("lapinakyva");
+  }, [lapinakyva]);
 
   useEffect(() => {
     const juuri = juuriRef.current;
@@ -53,6 +61,8 @@ export default function KeynoteNaytto({ lava, naytaTila }: Props) {
     let lisatyt: LavanViiva[] = [];
     let kehys = 0;
     let kanavaAuki = false;
+    /** Piirrettiinkö edellisessä kehyksessä kesken olevaa kumia valmiiden viivojen kerrokselle */
+    let kumiKesken = false;
 
     function mitoita() {
       if (!juuri!.clientWidth) return;
@@ -68,15 +78,20 @@ export default function KeynoteNaytto({ lava, naytaTila }: Props) {
     function piirra() {
       kehys = 0;
       if (tila.suhde !== mitoitettuSuhde) mitoita();
-      if (kaikki) {
+      // Kesken oleva kumi pyyhkii valmiita viivoja jo vedon aikana (läpinäkyvällä taustalla
+      // mustana piirretty kumi näkyisi), joten valmiiden kerros piirretään silloin kokonaan.
+      const kumiNyt = [...tila.kesken.values()].some((v) => v.sivellin === "kumi");
+      if (kaikki || (kesken && (kumiNyt || kumiKesken))) {
         kctx!.clearRect(0, 0, kerros!.width, kerros!.height);
         for (const viiva of tila.viivat) piirraViiva(kctx!, viiva, px);
+        for (const viiva of tila.kesken.values()) if (viiva.sivellin === "kumi") piirraViiva(kctx!, viiva, px);
       } else {
         for (const viiva of lisatyt) piirraViiva(kctx!, viiva, px);
       }
+      kumiKesken = kumiNyt;
       if (kesken) {
         pctx!.clearRect(0, 0, pinta!.width, pinta!.height);
-        for (const viiva of tila.kesken.values()) piirraViiva(pctx!, viiva, px, { kumiNakyvana: true });
+        for (const viiva of tila.kesken.values()) if (viiva.sivellin !== "kumi") piirraViiva(pctx!, viiva, px);
       }
       kaikki = kesken = false;
       lisatyt = [];
@@ -181,7 +196,7 @@ export default function KeynoteNaytto({ lava, naytaTila }: Props) {
   }, [supabase, lava]);
 
   return (
-    <div className="keynote-naytto" ref={juuriRef} data-nakyvissa={nakyvissa}>
+    <div className="keynote-naytto" ref={juuriRef} data-nakyvissa={nakyvissa} data-lapinakyva={lapinakyva}>
       <div className="alusta" ref={alustaRef}>
         <canvas ref={kerrosRef} />
         <canvas ref={pintaRef} />

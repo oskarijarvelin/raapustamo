@@ -4,12 +4,28 @@
 //
 // Viivojen x ja y on normalisoitu alustan leveyteen kuten piirtonäkymässä, joten samat
 // renderöintifunktiot (lib/piirto.ts) toimivat. Alustan korkeus on silloin 1 / suhde.
+import { MUSTEET } from "./piirto";
 import type { KokoId, Piste, Viiva } from "./tyypit";
 
 export const LAVA = /^[a-z0-9-]{1,30}$/;
 
 /** Realtime-kanavan nimi. Migraation politiikat koskevat vain `keynote:`-alkuisia kanavia. */
 export const lavanKanava = (lava: string) => `keynote:${lava}`;
+
+/**
+ * Videon yhteydenmuodostuksen kanava. Erillään viivoista, koska SDP ja ICE-ehdokkaat sisältävät
+ * lähiverkon osoitteita: vain esiintyjät ja moderaattorit saavat kuunnella (migraatio 0004).
+ */
+export const lavanVideokanava = (lava: string) => `keynote-video:${lava}`;
+
+// Keynotessa piirretään myös vaaleiden diojen päälle, joten LED-värien lisäksi tarvitaan tummia.
+// Mustalla pohjalla ne eivät näy, eikä niitä siksi ole kävijöiden paletissa.
+export const KEYNOTE_MUSTEET = [
+  ...MUSTEET,
+  { id: "musta", hex: "#111111", fi: "Musta", en: "Black" },
+  { id: "yonsini", hex: "#002D58", fi: "Yönsininen", en: "Navy" },
+  { id: "metsanvihrea", hex: "#185636", fi: "Metsänvihreä", en: "Forest green" },
+] as const;
 
 /** Keynote-näytön syke näkyy moderoinnissa ja editorissa tällä tunnuksella. */
 export const lavanNaytto = (lava: string) => `keynote-${lava}`;
@@ -48,6 +64,24 @@ export type KeynoteViesti =
   | { tyyppi: "nakyvyys"; versio: number; nakyvissa: boolean }
   /** Muutos on liian iso viestiksi (esim. tyhjennyksen kumoaminen): hae tallennettu tila. */
   | { tyyppi: "synkkaa"; versio: number };
+
+/**
+ * Videon yhteydenmuodostus (WebRTC) lähettimen (kaappauskone) ja katsojien (editorit) välillä.
+ * Lähetin ilmoittaa aloittavansa, katsoja ilmoittautuu, ja lähetin tekee jokaiselle katsojalle
+ * oman yhteyden. Video kulkee suoraan lähiverkossa, ei Supabasen kautta.
+ */
+export type VideoViesti =
+  | { tyyppi: "lahetin"; lahetin: string }
+  | { tyyppi: "lopeta"; lahetin: string }
+  | { tyyppi: "katsoja"; katsoja: string }
+  /** Katsoja sulkeutuu (esim. editori ladataan uudelleen): lähetin sulkee yhteyden heti. */
+  | { tyyppi: "poistu"; katsoja: string }
+  | { tyyppi: "tarjous"; lahetin: string; katsoja: string; sdp: string }
+  | { tyyppi: "vastaus"; lahetin: string; katsoja: string; sdp: string }
+  | { tyyppi: "ice"; lahetin: string; katsoja: string; kenelta: "lahetin" | "katsoja"; ehdokas: RTCIceCandidateInit };
+
+/** Videon kuvasuhde otetaan alustan kuvasuhteeksi, jos ero on tätä suurempi (pyöristykset sallitaan). */
+export const eriSuhde = (a: number, b: number) => Math.abs(a / b - 1) > 0.01;
 
 /** Tietokannan `lavat`-rivi */
 export interface TallennettuLava {

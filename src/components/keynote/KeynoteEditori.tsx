@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import Kirjautuminen from "@/components/kirjautuminen/Kirjautuminen";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  KEYNOTE_MUSTEET,
   LAVAN_KOOT,
   OLETUSSUHDE,
+  eriSuhde,
   lavanNaytto,
   sallittuSuhde,
   sovitaAlusta,
@@ -14,11 +15,12 @@ import {
   type KeynoteViesti,
   type LavanViiva,
 } from "@/lib/keynote";
-import { KUMIN_VARI, MUSTEET, SIVELTIMET, piirraViiva } from "@/lib/piirto";
-import { selainAsiakas } from "@/lib/supabase/selain";
+import { KUMIN_VARI, SIVELTIMET, piirraViiva } from "@/lib/piirto";
 import { sykkeenTila, type NaytonSyke } from "@/lib/syke";
 import type { Kieli, KokoId, SivellinId } from "@/lib/tyypit";
+import KeynoteOikeus from "./KeynoteOikeus";
 import { avaaLava, type Lavayhteys, type Yhteydentila } from "./lavayhteys";
+import { Videokatsoja, type VideonTila } from "./video";
 import "./keynote.css";
 
 interface Props {
@@ -27,6 +29,8 @@ interface Props {
   /** Pakotettu kuvasuhde (`?suhde=16:9`), muuten alusta täyttää koko ruudun */
   suhde: number | null;
   kieli: Kieli | null;
+  /** `?video=1`: esitysmateriaali kaappauskoneelta (/keynote/lahetin) alustan taustaksi */
+  video: boolean;
 }
 
 const TEKSTIT = {
@@ -53,6 +57,8 @@ const TEKSTIT = {
     piilotettuOhje: "Piilotettu näytöltä",
     latausvirhe: "Lavan lataus epäonnistui. Tarkista verkkoyhteys.",
     yritaUudelleen: "Yritä uudelleen",
+    video: { odottaa: "Video: odottaa lähetintä", yhdistetaan: "Video: yhdistetään…", yhdistetty: "Video ok", katkennut: "Video katkesi" },
+    videoSuhde: "Videon kuvasuhde on eri: tyhjennä alusta",
     s: "Ohut",
     m: "Keskikokoinen",
     l: "Paksu",
@@ -80,6 +86,8 @@ const TEKSTIT = {
     piilotettuOhje: "Hidden from screen",
     latausvirhe: "Loading the stage failed. Check the network connection.",
     yritaUudelleen: "Try again",
+    video: { odottaa: "Video: waiting for sender", yhdistetaan: "Video: connecting…", yhdistetty: "Video ok", katkennut: "Video lost" },
+    videoSuhde: "Video aspect differs: clear the canvas",
     s: "Thin",
     m: "Medium",
     l: "Thick",
@@ -92,54 +100,8 @@ const JATKOVALI = 40;
 /** Muutokset tallennetaan viimeistään näin pian ensimmäisestä muutoksesta (ms). */
 const TALLENNUSVIIVE = 700;
 
-// --- Kirjautuminen ja oikeudet ---
-
 export default function KeynoteEditori(props: Props) {
-  const supabase = useMemo(() => selainAsiakas(), []);
-  const [istunto, setIstunto] = useState<Session | null | undefined>(undefined);
-  const [oikeus, setOikeus] = useState<boolean | "virhe" | null>(null);
-
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setIstunto(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_, uusi) => setIstunto(uusi));
-    return () => data.subscription.unsubscribe();
-  }, [supabase]);
-
-  useEffect(() => {
-    if (!supabase || !istunto) return setOikeus(null);
-    supabase.rpc("voi_piirtaa_lavalle").then(({ data, error }) => setOikeus(error ? "virhe" : data === true));
-  }, [supabase, istunto]);
-
-  if (!supabase) {
-    // Kehityksessä ilman Supabasea editori ja näyttö toimivat saman selaimen välilehdissä.
-    if (process.env.NODE_ENV !== "production") return <Editori supabase={null} {...props} />;
-    return (
-      <div className="kirjautuminen">
-        <p className="hiljainen">Supabase-asetukset puuttuvat.</p>
-      </div>
-    );
-  }
-  if (istunto === undefined || (istunto && oikeus === null)) return <div className="kirjautuminen hiljainen">Ladataan…</div>;
-  if (!istunto) return <Kirjautuminen supabase={supabase} otsikko="Keynote" />;
-  if (oikeus !== true) {
-    return (
-      <div className="kirjautuminen">
-        <form onSubmit={(e) => e.preventDefault()}>
-          <h1 className="otsikko">Ei oikeuksia</h1>
-          <p className="hiljainen">
-            {oikeus === "virhe"
-              ? "Keynote-oikeuksia ei voitu tarkistaa. Onko migraatio 0003_keynote.sql ajettu?"
-              : `Tunnuksella ${istunto.user.email} ei ole keynote-oikeuksia. Pyydä ylläpitäjää lisäämään tunnus esiintyjiin.`}
-          </p>
-          <button className="nappi nappi--toissijainen" type="button" onClick={() => supabase.auth.signOut()}>
-            Kirjaudu ulos
-          </button>
-        </form>
-      </div>
-    );
-  }
-  return <Editori supabase={supabase} {...props} />;
+  return <KeynoteOikeus otsikko="Keynote">{(supabase) => <Editori supabase={supabase} {...props} />}</KeynoteOikeus>;
 }
 
 // --- Editori ---
@@ -156,10 +118,10 @@ interface KeskenOlevaViiva {
   lahetetty: number;
 }
 
-function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Props & { supabase: SupabaseClient | null }) {
+function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli, video }: Props & { supabase: SupabaseClient | null }) {
   const [kieli, setKieli] = useState<Kieli>(urlKieli ?? "fi");
   const T = TEKSTIT[kieli];
-  const [vari, setVari] = useState<string>(MUSTEET[0].hex);
+  const [vari, setVari] = useState<string>(KEYNOTE_MUSTEET[0].hex);
   const [sivellin, setSivellin] = useState<SivellinId>("tussi");
   const [koko, setKoko] = useState<KokoId>("m");
   const [, setRenderointi] = useState(0);
@@ -236,6 +198,15 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
     return sallittuSuhde(juuri && juuri.clientHeight ? juuri.clientWidth / juuri.clientHeight : innerWidth / innerHeight);
   };
 
+  /** Videon kuvasuhde, kun taustavideo on tullut (?video=1) */
+  const videoSuhde = useRef<number | null>(null);
+
+  /**
+   * Tyhjän alustan kuvasuhde: ?suhde=, muuten taustavideon, muuten ruudun. Videotilassa ennen videon
+   * tuloa 16:9 (tavallisin esityksen kuvasuhde), jottei alusta vaihdu, jos piirtäminen alkaa jo ennen videota.
+   */
+  const tavoiteSuhde = () => pakotettuSuhde ?? videoSuhde.current ?? (video ? OLETUSSUHDE : ruudunSuhde());
+
   const piirraKaikki = useCallback(() => {
     const ctx = kerrosRef.current?.getContext("2d");
     if (!ctx || !kerrosRef.current) return;
@@ -274,7 +245,7 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
     if (!juuri) return;
     const havainnoija = new ResizeObserver(() => {
       mitoita();
-      if (pakotettuSuhde || !ladattuRef.current || viivat.current.length) return;
+      if (pakotettuSuhde || video || !ladattuRef.current || viivat.current.length) return;
       clearTimeout(suhdeAjastin.current);
       suhdeAjastin.current = setTimeout(() => {
         const uusi = ruudunSuhde();
@@ -286,7 +257,7 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
       havainnoija.disconnect();
       clearTimeout(suhdeAjastin.current);
     };
-  }, [mitoita, pakotettuSuhde, vaihdaSuhde]);
+  }, [mitoita, pakotettuSuhde, video, vaihdaSuhde]);
 
   // --- Yhteys ja lataus ---
 
@@ -320,9 +291,9 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
         kumotut.current = [];
         ladattuRef.current = true;
         setLadattu(true);
-        // Tyhjä lava saa tämän ruudun (tai ?suhde=) kuvasuhteen. Jos lavalla on jo piirros, sen
-        // kuvasuhde säilyy, kunnes alusta tyhjennetään.
-        const uusi = pakotettuSuhde ?? ruudunSuhde();
+        // Tyhjä lava saa tämän ruudun (tai ?suhde=, tai taustavideon) kuvasuhteen. Jos lavalla on
+        // jo piirros, sen kuvasuhde säilyy, kunnes alusta tyhjennetään.
+        const uusi = tavoiteSuhde();
         if (!viivat.current.length && (!rivi || Math.abs(uusi - suhde.current) > 0.001)) vaihdaSuhde(uusi);
         else mitoita();
       })
@@ -364,7 +335,16 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (nykyinen.current) piirraViiva(ctx, nykyinen.current.viiva, px.current, { kumiNakyvana: true });
+      const viiva = nykyinen.current?.viiva;
+      if (!viiva) return;
+      if (viiva.sivellin === "kumi") {
+        // Kumi pyyhkii valmiita viivoja jo vedon aikana, jolloin taustavideo näkyy heti alta.
+        piirraKaikki();
+        const kerros = kerrosRef.current?.getContext("2d");
+        if (kerros) piirraViiva(kerros, viiva, px.current);
+      } else {
+        piirraViiva(ctx, viiva, px.current);
+      }
     });
   }
 
@@ -460,7 +440,7 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
       laheta({ tyyppi: "valmis", versio: versio.current, viiva: toiminto.viiva });
     } else {
       viivat.current = [];
-      suhde.current = pakotettuSuhde ?? ruudunSuhde();
+      suhde.current = tavoiteSuhde();
       laheta({ tyyppi: "tyhjenna", versio: versio.current, suhde: suhde.current });
       mitoita();
     }
@@ -524,6 +504,43 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
     return () => removeEventListener("keydown", kasittele);
   }, []);
 
+  // --- Taustavideo (?video=1) ---
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videonTila, setVideonTila] = useState<VideonTila>("odottaa");
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!video || !el) return;
+    // Tyhjä alusta ottaa videon kuvasuhteen, jotta piirros osuu Resolumessa samaan kohtaan kuin iPadilla.
+    const videonKoko = () => {
+      if (!el.videoWidth || !el.videoHeight) return;
+      videoSuhde.current = sallittuSuhde(el.videoWidth / el.videoHeight);
+      if (!pakotettuSuhde && ladattuRef.current && !viivat.current.length && eriSuhde(videoSuhde.current, suhde.current)) {
+        vaihdaSuhde(videoSuhde.current);
+      }
+      paivita();
+    };
+    el.addEventListener("loadedmetadata", videonKoko);
+    el.addEventListener("resize", videonKoko);
+    const katsoja = new Videokatsoja(supabase, lava, {
+      virta: (virta) => {
+        el.srcObject = virta;
+        if (virta) void el.play().catch(() => {});
+        else {
+          videoSuhde.current = null;
+          paivita();
+        }
+      },
+      tila: setVideonTila,
+    });
+    return () => {
+      katsoja.sulje();
+      el.removeEventListener("loadedmetadata", videonKoko);
+      el.removeEventListener("resize", videonKoko);
+      el.srcObject = null;
+    };
+  }, [video, supabase, lava, pakotettuSuhde, vaihdaSuhde]);
+
   // --- Keynote-näytön syke ---
 
   const [naytonSyke, setNaytonSyke] = useState<NaytonSyke | null>(null);
@@ -580,6 +597,7 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
   return (
     <div className="keynote-editori" ref={juuriRef} data-nakyvissa={nakyvissa}>
       <div className="alusta" ref={alustaRef}>
+        {video && <video ref={videoRef} className="taustavideo" muted playsInline autoPlay />}
         <canvas ref={kerrosRef} />
         <canvas
           ref={pintaRef}
@@ -601,6 +619,14 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
         <span className="siru naytto" data-tila={paikallinen ? "paikallinen" : (nayttoTila ?? "ei")}>
           {nayttoTeksti}
         </span>
+        {video && (
+          <span className="siru video" data-tila={videonTila}>
+            {T.video[videonTila]}
+          </span>
+        )}
+        {video && videoSuhde.current !== null && eriSuhde(videoSuhde.current, suhde.current) && (
+          <span className="siru varoitus">{T.videoSuhde}</span>
+        )}
         {tallennusVirhe && <span className="siru virhe">{T.tallennusVirhe}</span>}
         {!ladattu && !latausvirhe && <span className="siru">…</span>}
       </div>
@@ -628,7 +654,7 @@ function Editori({ supabase, lava, suhde: pakotettuSuhde, kieli: urlKieli }: Pro
       {tyokalutAuki && (
         <div className="tyokalut" role="toolbar" aria-label={T.tyokalut}>
           <div className="ryhma varit" role="group">
-            {MUSTEET.map((m) => (
+            {KEYNOTE_MUSTEET.map((m) => (
               <button
                 key={m.id}
                 type="button"

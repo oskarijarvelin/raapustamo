@@ -6,34 +6,27 @@ import { lavanKanava, type KeynoteViesti, type TallennettuLava } from "@/lib/key
 
 export type Yhteydentila = "yhdistetaan" | "yhdistetty" | "virhe";
 
-export interface Lavayhteys {
-  paikallinen: boolean;
-  /** Lähettää viestin, jos kanava on auki. Muuten viesti jätetään pois: näyttö synkronoi tallennetusta tilasta. */
-  laheta(viesti: KeynoteViesti): void;
-  lataa(): Promise<TallennettuLava | null>;
-  /** Tallennetun tilan versio (kevyt tarkistus ennen koko tilan hakua), -1 = ei tallennettu */
-  lataaVersio(): Promise<number | null>;
-  tallenna(rivi: TallennettuLava): Promise<boolean>;
-  sulje(): void;
-}
-
-interface Kuuntelijat {
-  viesti?: (viesti: KeynoteViesti) => void;
+interface Kuuntelijat<T> {
+  viesti?: (viesti: T) => void;
   yhteys?: (tila: Yhteydentila, syy?: string) => void;
 }
 
-const TAPAHTUMA = "keynote";
-const KENTAT = "tunnus, viivat, suhde, versio, nakyvissa";
-
-export function avaaLava(supabase: SupabaseClient | null, lava: string, kuuntelijat: Kuuntelijat): Lavayhteys {
-  return supabase ? supabaseLava(supabase, lava, kuuntelijat) : paikallinenLava(lava, kuuntelijat);
+export interface Kanava<T> {
+  /** Lähettää viestin, jos kanava on auki. Muuten viesti jätetään pois. */
+  laheta(viesti: T): void;
+  sulje(): void;
 }
 
-function supabaseLava(supabase: SupabaseClient, lava: string, { viesti, yhteys }: Kuuntelijat): Lavayhteys {
+/** Yksityinen Realtime-broadcast-kanava, tai kehityksessä ilman Supabasea BroadcastChannel. */
+export function avaaKanava<T>(supabase: SupabaseClient | null, nimi: string, tapahtuma: string, kuuntelijat: Kuuntelijat<T>): Kanava<T> {
+  return supabase ? supabaseKanava(supabase, nimi, tapahtuma, kuuntelijat) : paikallinenKanava(nimi, kuuntelijat);
+}
+
+function supabaseKanava<T>(supabase: SupabaseClient, nimi: string, tapahtuma: string, { viesti, yhteys }: Kuuntelijat<T>): Kanava<T> {
   let auki = false;
   let suljettu = false;
-  const kanava = supabase.channel(lavanKanava(lava), { config: { private: true, broadcast: { self: false, ack: false } } });
-  if (viesti) kanava.on("broadcast", { event: TAPAHTUMA }, ({ payload }) => viesti(payload as KeynoteViesti));
+  const kanava = supabase.channel(nimi, { config: { private: true, broadcast: { self: false, ack: false } } });
+  if (viesti) kanava.on("broadcast", { event: tapahtuma }, ({ payload }) => viesti(payload as T));
 
   yhteys?.("yhdistetaan");
   // Yksityinen kanava tarvitsee kirjautuneen käyttäjän tunnisteen (näytöllä anon-avaimen).
@@ -48,10 +41,49 @@ function supabaseLava(supabase: SupabaseClient, lava: string, { viesti, yhteys }
   });
 
   return {
-    paikallinen: false,
     laheta(v) {
-      if (auki) void kanava.send({ type: "broadcast", event: TAPAHTUMA, payload: v });
+      if (auki) void kanava.send({ type: "broadcast", event: tapahtuma, payload: v });
     },
+    sulje() {
+      suljettu = true;
+      void supabase.removeChannel(kanava);
+    },
+  };
+}
+
+function paikallinenKanava<T>(nimi: string, { viesti, yhteys }: Kuuntelijat<T>): Kanava<T> {
+  const kanava = new BroadcastChannel(nimi);
+  let suljettu = false;
+  if (viesti) kanava.onmessage = (e) => viesti(e.data as T);
+  queueMicrotask(() => !suljettu && yhteys?.("yhdistetty"));
+  return {
+    laheta: (v) => !suljettu && kanava.postMessage(v),
+    sulje: () => {
+      suljettu = true;
+      kanava.close();
+    },
+  };
+}
+
+// --- Lava: viivat ja tallennettu tila ---
+
+export interface Lavayhteys extends Kanava<KeynoteViesti> {
+  lataa(): Promise<TallennettuLava | null>;
+  /** Tallennetun tilan versio (kevyt tarkistus ennen koko tilan hakua), -1 = ei tallennettu */
+  lataaVersio(): Promise<number | null>;
+  tallenna(rivi: TallennettuLava): Promise<boolean>;
+}
+
+const TAPAHTUMA = "keynote";
+const KENTAT = "tunnus, viivat, suhde, versio, nakyvissa";
+
+export function avaaLava(supabase: SupabaseClient | null, lava: string, kuuntelijat: Kuuntelijat<KeynoteViesti>): Lavayhteys {
+  const kanava = avaaKanava(supabase, lavanKanava(lava), TAPAHTUMA, kuuntelijat);
+  return { ...kanava, ...(supabase ? supabaseTallennus(supabase, lava) : paikallinenTallennus(lava)) };
+}
+
+function supabaseTallennus(supabase: SupabaseClient, lava: string): Omit<Lavayhteys, keyof Kanava<KeynoteViesti>> {
+  return {
     async lataa() {
       const { data, error } = await supabase.from("lavat").select(KENTAT).eq("tunnus", lava).maybeSingle();
       if (error) throw error;
@@ -67,19 +99,11 @@ function supabaseLava(supabase: SupabaseClient, lava: string, { viesti, yhteys }
       if (error) console.warn("Lavan tallennus epäonnistui", error.message);
       return !error;
     },
-    sulje() {
-      suljettu = true;
-      void supabase.removeChannel(kanava);
-    },
   };
 }
 
-function paikallinenLava(lava: string, { viesti, yhteys }: Kuuntelijat): Lavayhteys {
-  const kanava = new BroadcastChannel(lavanKanava(lava));
+function paikallinenTallennus(lava: string): Omit<Lavayhteys, keyof Kanava<KeynoteViesti>> {
   const avain = `raapustamo:keynote:${lava}`;
-  if (viesti) kanava.onmessage = (e) => viesti(e.data as KeynoteViesti);
-  queueMicrotask(() => yhteys?.("yhdistetty"));
-
   const lue = (): TallennettuLava | null => {
     try {
       return JSON.parse(localStorage.getItem(avain) ?? "null");
@@ -87,10 +111,7 @@ function paikallinenLava(lava: string, { viesti, yhteys }: Kuuntelijat): Lavayht
       return null;
     }
   };
-
   return {
-    paikallinen: true,
-    laheta: (v) => kanava.postMessage(v),
     lataa: async () => lue(),
     lataaVersio: async () => lue()?.versio ?? -1,
     async tallenna(rivi) {
@@ -101,6 +122,5 @@ function paikallinenLava(lava: string, { viesti, yhteys }: Kuuntelijat): Lavayht
         return false;
       }
     },
-    sulje: () => kanava.close(),
   };
 }

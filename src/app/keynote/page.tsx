@@ -25,6 +25,7 @@ const teksti = (arvo: string | string[] | undefined) => (typeof arvo === "string
 /**
  * Keynote-puhujan piirtoeditori (iPad + Apple Pencil). Vaatii kirjautumisen (esiintyjät ja moderaattorit).
  * ?lava=lava-1 · ?suhde=16:9 (pakotettu kuvasuhde, oletuksena koko ruutu) · ?kieli=fi|en
+ * ?video=1 (esitysmateriaali kaappauskoneelta taustaksi, ks. /keynote/lahetin)
  */
 export default async function Keynotesivu({ searchParams }: { searchParams: Promise<Parametrit> }) {
   const p = await searchParams;
@@ -35,6 +36,7 @@ export default async function Keynotesivu({ searchParams }: { searchParams: Prom
       lava={lava && LAVA.test(lava) ? lava : "lava-1"}
       suhde={lueSuhde(teksti(p.suhde))}
       kieli={kieli === "fi" || kieli === "en" ? (kieli as Kieli) : null}
+      video={teksti(p.video) === "1"}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { kasitteleViesti, lueSuhde, sovitaSuhteeseen, tyhjaLava, yhdistaTallennettu, type LavanViiva } from "./keynote";
+import { KEYNOTE_MUSTEET, eriSuhde, kasitteleViesti, lueSuhde, sovitaSuhteeseen, tyhjaLava, yhdistaTallennettu, type LavanViiva } from "./keynote";
+import { KUMIN_VARI } from "./piirto";
 import type { Piste } from "./tyypit";
 
 const pisteet = (n: number, alku = 0): Piste[] => Array.from({ length: n }, (_, i) => [(alku + i) / 100, 0.1, 0.5, (alku + i) * 16]);
@@ -134,5 +135,22 @@ describe("sovitaSuhteeseen", () => {
 
   it("sovittaa kapean alustan leveään tilaan", () => {
     expect(sovitaSuhteeseen(4032, 1152, 16 / 9)).toEqual({ leveys: 1152 * (16 / 9), korkeus: 1152 });
+  });
+});
+
+describe("eriSuhde", () => {
+  it("sallii pyöristyserot mutta huomaa eri kuvasuhteen", () => {
+    expect(eriSuhde(1920 / 1080, 1280 / 720)).toBe(false);
+    expect(eriSuhde(1920 / 1080, 1920 / 1082)).toBe(false);
+    expect(eriSuhde(16 / 9, 4 / 3)).toBe(true);
+  });
+});
+
+describe("KEYNOTE_MUSTEET", () => {
+  it("sisältää tummat sävyt, mutta musta ei ole kumin väri", () => {
+    const varit = KEYNOTE_MUSTEET.map((m) => m.hex);
+    expect(varit).toContain("#111111");
+    expect(varit).not.toContain(KUMIN_VARI);
+    expect(new Set(varit).size).toBe(varit.length);
   });
 });
