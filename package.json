@@ -12,7 +12,8 @@
     "silta": "node silta/silta.mjs",
     "kioskiavain": "node --env-file-if-exists=.env.local scripts/kioskiavain.mjs",
     "keynote-tarkistus": "node --env-file-if-exists=.env.local scripts/keynote-tarkistus.mjs",
-    "nayttoavain": "node scripts/nayttoavain.mjs"
+    "nayttoavain": "node scripts/nayttoavain.mjs",
+    "kestotesti": "node scripts/kestotesti.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.137.0",

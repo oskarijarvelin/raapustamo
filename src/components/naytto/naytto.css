@@ -318,3 +318,21 @@
   font-size: 12px;
   cursor: default;
 }
+
+/* Demotila (?demo=40): merkki kulmassa, jottei generoituja piirroksia luule oikeiksi screenillä */
+.nayttosivu .demo-merkki {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  padding: 6px 14px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--varoitus);
+  color: var(--musta);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+}

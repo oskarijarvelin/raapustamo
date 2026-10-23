@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import qrcode from "qrcode-generator";
+import { demopiirros, demopiirrokset } from "@/lib/demopiirrokset";
 import { seuraavaPiirros } from "@/lib/jono";
 import { piirraPiirros, tunnus } from "@/lib/piirto";
 import { lueNayttoavain } from "@/lib/nayttoavain";
@@ -33,6 +34,8 @@ interface Props {
   uudelleenlatausMin: number;
   /** Resolume-sillan osoite (silta/silta.mjs), esim. http://localhost:7400 – null = ei siltaa */
   siltaUrl: string | null;
+  /** Demotila (`?demo=40`): generoidut piirrokset ilman tietokantaa, kestotestiin ja esittelyyn. 0 = pois */
+  demo: number;
 }
 
 const LEVEYS = 4032;
@@ -51,6 +54,10 @@ const KENTAT = "id, nro, luotu, viivat, nostettu, nayttokerrat, viimeksi_naytett
 /** Tauolta paluun animaation kesto (ks. naytto.css: tauko-sulkeutuu) */
 const PALUU = 1400;
 const SIVUPALKKI = 576;
+/** Demotilassa uusi piirros "hyväksytään" näin usein ja vanhin poistuu */
+const DEMO_UUSI = 30_000;
+/** Demotilassa hätäpysäytys ja paluu näin usein (8 s tauko) */
+const DEMO_TAUKO = 15 * 60_000;
 
 type Vaihe = "tyhja" | "ulos" | "piirtyy" | "valmis" | "mikro";
 
@@ -111,8 +118,9 @@ function QrKoodi({ url }: { url: string }) {
   );
 }
 
-export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin, siltaUrl }: Props) {
-  const supabase = useMemo(() => selainAsiakas(), []);
+export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite, skaala, tunnus: nayttoTunnus, uudelleenlatausMin, siltaUrl, demo }: Props) {
+  // Demotila ei koske tietokantaan: ei sykettä, näyttökertoja eikä oikeita piirroksia.
+  const supabase = useMemo(() => (demo ? null : selainAsiakas()), [demo]);
   const solujenMaara = layout === "avaruus" ? 0 : layout === "trio" ? 3 : layout === "solo" ? 1 : 12;
   const koko = layout === "seina" ? 576 : 1152;
   const avaruusLeveys = naytaQr ? LEVEYS - SIVUPALKKI : LEVEYS;
@@ -186,7 +194,9 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
       };
     });
 
-    const piirrokset = new Map<string, NaytettavaPiirros>(lueValimuisti().map((p) => [p.id, p]));
+    const piirrokset = new Map<string, NaytettavaPiirros>((demo ? demopiirrokset(demo) : lueValimuisti()).map((p) => [p.id, p]));
+    // Demotila ei ylikirjoita playout-koneen välimuistia generoiduilla piirroksilla.
+    const tallennaValimuisti = (lista: NaytettavaPiirros[]) => !demo && kirjoitaValimuisti(lista);
     let avaruus: Avaruus | null = null;
 
     // Resolume-silta kertoo, onko Raapustamo-klippi screenillä. Ilman siltaa tai sen yhteyttä
@@ -333,7 +343,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
     /** Poistaa piirroksen heti screeniltä (hylätty tai piilotettu moderoinnissa). */
     function poista(id: string) {
       piirrokset.delete(id);
-      kirjoitaValimuisti([...piirrokset.values()]);
+      tallennaValimuisti([...piirrokset.values()]);
       avaruus?.poista(id);
       for (const s of solut) {
         if (s.piirros?.id === id || s.seuraava?.id === id) vaihdaSeuraavaan(s, true);
@@ -356,7 +366,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
       const tuoreet = new Map((data as NaytettavaPiirros[]).map((p) => [p.id, p]));
       for (const id of [...piirrokset.keys()]) if (!tuoreet.has(id)) poista(id);
       for (const [id, p] of tuoreet) piirrokset.set(id, p);
-      kirjoitaValimuisti([...piirrokset.values()]);
+      tallennaValimuisti([...piirrokset.values()]);
       tayta();
     }
 
@@ -364,6 +374,25 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
     solut.forEach((s, i) => setTimeout(() => vaihdaSeuraavaan(s, true), 300 + i * (layout === "seina" ? 250 : 700)));
     lataa();
     const paivitys = setInterval(lataa, PAIVITYSVALI);
+
+    // Demotila käy läpi samat polut kuin festivaalilla: uusia hyväksyntöjä, poistoja sekä hätäpysäytys
+    // ja paluu. Kestotesti (scripts/kestotesti.mjs) näkee näin myös näiden polkujen muistivuodot.
+    let demoNro = demo;
+    let demoTaukoAjastin: ReturnType<typeof setTimeout> | undefined;
+    const demoUudet = demo
+      ? setInterval(() => {
+          const uusi = demopiirros(++demoNro);
+          piirrokset.set(uusi.id, uusi);
+          if (piirrokset.size > demo) poista(piirrokset.keys().next().value!);
+          tayta();
+        }, DEMO_UUSI)
+      : undefined;
+    const demoTauot = demo
+      ? setInterval(() => {
+          setTauko(true);
+          demoTaukoAjastin = setTimeout(() => setTauko(false), 8000);
+        }, DEMO_TAUKO)
+      : undefined;
     let kierrokset = setInterval(kierros, vaihtoS * 1000);
 
     /** Klippi tuli screenille tai näyttö palasi tauolta: piirrokset piirtyvät esiin uudelleen ja kierros alkaa alusta. */
@@ -457,7 +486,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
           if (p.tila && p.tila !== "hyvaksytty") return poista(p.id);
           const vanha = piirrokset.get(p.id);
           piirrokset.set(p.id, vanha ? { ...vanha, nostettu: p.nostettu } : p);
-          kirjoitaValimuisti([...piirrokset.values()]);
+          tallennaValimuisti([...piirrokset.values()]);
           tayta();
         })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "asetukset" }, (muutos) => {
@@ -477,6 +506,9 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
     return () => {
       cancelAnimationFrame(kehysId);
       clearInterval(paivitys);
+      clearInterval(demoUudet);
+      clearInterval(demoTauot);
+      clearTimeout(demoTaukoAjastin);
       clearInterval(kierrokset);
       clearInterval(sykkeet);
       siltaLahde?.close();
@@ -488,7 +520,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
       if (komennot) supabase?.removeChannel(komennot);
       komennot = null;
     };
-  }, [supabase, layout, koko, solujenMaara, vaihtoS, maara, nayttoTunnus, uudelleenlatausMin, siltaUrl]);
+  }, [supabase, layout, koko, solujenMaara, vaihtoS, maara, nayttoTunnus, uudelleenlatausMin, siltaUrl, demo]);
 
   // Service Worker: näyttö käynnistyy välimuistista myös ilman verkkoa (vain tuotannossa,
   // koska kehityspalvelimen tiedostot muuttuvat jatkuvasti).
@@ -526,6 +558,7 @@ export default function Naytto({ layout, vaihtoS, maara, naytaQr, qrUrl, osoite,
 
   return (
     <div className="nayttosivu" ref={juuriRef}>
+      {demo > 0 && <div className="demo-merkki">Demo</div>}
       <div
         className="lava"
         data-layout={layout}

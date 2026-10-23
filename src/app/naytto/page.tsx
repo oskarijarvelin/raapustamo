@@ -14,6 +14,7 @@ const teksti = (arvo: string | string[] | undefined) => (typeof arvo === "string
  * ?layout=avaruus|trio|solo|seina · ?vaihto=12 (s) · ?maara=6 (avaruus) · ?qr=0 · ?osoite=raapustamo.fi · ?qr-url=… · ?skaala=1
  * ?tunnus=led-1 (syke moderointiin) · ?uudelleenlataus=240 (min, 0 = pois)
  * ?silta=http://localhost:7400 (Resolume-silta, ks. silta/README.md)
+ * ?demo=40 (generoidut piirrokset ilman tietokantaa: kestotesti ja esittely, ks. scripts/kestotesti.mjs)
  */
 export default async function Nayttosivu({ searchParams }: { searchParams: Promise<Parametrit> }) {
   const p = await searchParams;
@@ -24,6 +25,7 @@ export default async function Nayttosivu({ searchParams }: { searchParams: Promi
   const tunnus = teksti(p.tunnus)?.toLowerCase();
   const uudelleenlataus = Number(teksti(p.uudelleenlataus));
   const silta = teksti(p.silta);
+  const demo = Number(teksti(p.demo));
   return (
     <Naytto
       layout={layout === "trio" || layout === "solo" || layout === "seina" ? (layout as Layout) : "avaruus"}
@@ -36,6 +38,7 @@ export default async function Nayttosivu({ searchParams }: { searchParams: Promi
       tunnus={tunnus && /^[a-z0-9-]{1,40}$/.test(tunnus) ? tunnus : "led-1"}
       uudelleenlatausMin={Number.isFinite(uudelleenlataus) && uudelleenlataus >= 30 ? uudelleenlataus : 0}
       siltaUrl={silta && /^https?:\/\/[^\s]+$/.test(silta) ? silta : null}
+      demo={Number.isInteger(demo) && demo >= 2 && demo <= 500 ? demo : 0}
     />
   );
 }
