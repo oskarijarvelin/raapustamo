@@ -8,6 +8,8 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 - Resolume-silta: [silta/](silta/README.md)
 - Ilmeprototyypit: [prototyypit/](prototyypit/README.md)
 - Kuvat tuottajalle: [docs/kuvat/](docs/kuvat)
+- Ajo-ohje: [docs/ajo-ohje.md](docs/ajo-ohje.md) · Moderointiohje: [docs/moderointiohje.md](docs/moderointiohje.md)
+- Testien tarkistuslistat: [keynote-laitetesti](docs/testit/keynote-laitetesti.md) · [screen-testi #1](docs/testit/screen-testi-1.md)
 
 ## Näkymät
 
