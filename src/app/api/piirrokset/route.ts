@@ -1,5 +1,7 @@
-// Piirrosten vastaanotto: validointi → kioskin avain → Turnstile → rate limit → tallennus moderointijonoon.
-import { NextResponse } from "next/server";
+// Piirrosten vastaanotto: validointi → kioskin avain → Turnstile → rate limit → tallennus moderointijonoon
+// → tekoälyesisuodatus vastauksen jälkeen.
+import { after, NextResponse } from "next/server";
+import { arvioiPiirros } from "@/lib/ai-arvio";
 import { onKioskiavain } from "@/lib/kioski";
 import { asiakkaanIp, laitetunniste, odotusaika, rajaLahteelle } from "@/lib/rajoitus";
 import { palvelinAsiakas } from "@/lib/supabase/palvelin";
@@ -90,6 +92,14 @@ export async function POST(pyynto: Request) {
 
   const { error: lokivirhe } = await supabase.from("lahetykset").insert({ piirros_id: piirros.id, laite_hash: laite });
   if (lokivirhe) console.error("Lähetyslokin kirjaus epäonnistui", lokivirhe);
+
+  // Tekoälyesisuodatus vastauksen jälkeen, jottei kävijä odota sitä. Moderointi saa arvion Realtimella.
+  after(async () => {
+    const arvio = await arvioiPiirros(viivat);
+    if (!arvio) return;
+    const { error } = await supabase.from("piirrokset").update({ ai_arvio: arvio }).eq("id", piirros.id);
+    if (error) console.error("Tekoälyarvion tallennus epäonnistui", error);
+  });
 
   return vastaus(201, { id: piirros.id, nro: piirros.nro });
 }

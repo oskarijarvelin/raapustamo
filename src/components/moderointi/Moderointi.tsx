@@ -183,6 +183,11 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
   const lista = useMemo(() => [...piirrokset.values()], [piirrokset]);
   const jono = useMemo(() => moderointijono(lista), [lista]);
   const valittu = jono.find((p) => p.id === valittuId) ?? jono[0];
+  // Näkyvä piirros pysyy paikallaan, vaikka tekoälyarvio nostaisi toisen jonon kärkeen kesken
+  // tarkastelun. Muuten pyyhkäisy tai pikanäppäin voisi osua eri piirrokseen kuin moderaattori katsoi.
+  useEffect(() => {
+    if (valittu && valittu.id !== valittuId) setValittuId(valittu.id);
+  }, [valittu, valittuId]);
   const maarat = {
     jono: jono.length,
     hyvaksytty: lista.filter((p) => p.tila === "hyvaksytty").length,

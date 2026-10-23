@@ -47,6 +47,7 @@ Kopioi `.env.example` tiedostoksi `.env.local` ja täytä arvot. Supabasen arvot
 | `TURNSTILE_SECRET` | Turnstile-widgetin secret key. Kehityksessä testiavain `1x0000000000000000000000000000000AA`. **Vain palvelimelle.** |
 | `TURNSTILE_HOSTNAMES` | Piirtonäkymän hostnimet pilkuilla eroteltuina. Testiavaimilla `example.com`, tuotannossa oma domain (ei localhostia) |
 | `KIOSKI_SALAISUUS` | Oma satunnainen merkkijono, josta kioskiavaimet lasketaan. **Vain palvelimelle.** |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. Tekoälyesisuodatus. Ilman sitä piirrokset menevät jonoon ilman arviota. **Vain palvelimelle.** |
 
 Ilman Turnstile-muuttujia lähetys-API vastaa `503` (tarkistus ei koskaan aukea itsestään).
 Vercelin tuotannossa (`VERCEL_ENV=production`) testiavainten tuloksia ei hyväksytä, joten tuotantoon tarvitaan
@@ -94,10 +95,16 @@ Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria sama
   - Näyttö palautuu itse: jos animaatio jumittuu yli 30 sekunniksi tai virheitä tulee yli 20 minuutissa, sivu ladataan uudelleen.
   - Resolume-silta ([silta/](silta/README.md)) tahdistaa kierron karuselliin. Piirrokset vaihtuvat ja näyttökerrat kirjataan vain, kun Raapustamo-klippi on screenillä.
 - **Lähetykset**: palvelin tarkistaa piirroksen rakenteen, kioskin avaimen ja Cloudflare Turnstile -tunnisteen (siteverify: `success`, action `piirros` ja hostname) ennen rate limitiä. Widget on vahvistusdialogissa ja näkyy vain, jos Cloudflare vaatii vuorovaikutusta.
+- **Tekoälyesisuodatus** ([src/lib/ai-arvio.ts](src/lib/ai-arvio.ts)):
+  - Lähetyksen jälkeen (`after()`, kävijä ei odota) palvelin piirtää vektoreista 768 × 768 px:n PNG-kuvan ([src/lib/esikatselu.ts](src/lib/esikatselu.ts), resvg).
+  - Claude Haiku 5.5 luokittelee kuvan: `ok`, `epailyttava` tai `sopimaton`, varmuus ja lyhyt syy suomeksi. Arvio tallentuu kenttään `ai_arvio`, ja moderointi saa sen Realtimella.
+  - Moderoinnissa epäilyttävät ja sopimattomat näkyvät jonossa ensin, ja sopimattomat sumennetaan. **Tekoäly ei koskaan hyväksy eikä hylkää itse.**
+  - Jos tekoäly ei vastaa tai avain puuttuu, piirros menee jonoon ilman arviota. Mallin kieltäytyminen merkitään epäilyttäväksi.
+  - Kustannus noin 0,2–0,3 $ tuhatta piirrosta kohden. Piirroksen kuva lähetetään Anthropicille (Yhdysvallat), mikä pitää mainita tietosuojaselosteessa.
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
-## Seuraavaksi (vaihe 3)
+## Seuraavaksi
 
-- Tekoälyesisuodatus moderointiin (`ai_arvio`)
-- Oma Turnstile-widget tuotantodomainille
+- Screen-testi oikealla LED-screenillä ja Resolumella
 - Verkkogalleria
+- Tilastot ja vienti

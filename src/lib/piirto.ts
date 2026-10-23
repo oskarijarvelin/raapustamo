@@ -45,8 +45,8 @@ export const KOOT: Record<KokoId, number> = { s: 0.01, m: 0.022, l: 0.045 };
 
 const keskiarvo = (a: number, b: number) => (a + b) / 2;
 
-// perfect-freehandin ääriviiva → sileä Path2D (kirjaston README:n mukainen toteutus)
-function polkuReunasta(reuna: number[][]): Path2D | null {
+// perfect-freehandin ääriviiva → sileä SVG-polku (kirjaston README:n mukainen toteutus)
+function polkuReunasta(reuna: number[][]): string | null {
   const n = reuna.length;
   if (n < 4) return null;
   let a = reuna[0];
@@ -60,8 +60,24 @@ function polkuReunasta(reuna: number[][]): Path2D | null {
     b = reuna[i + 1];
     d += `${keskiarvo(a[0], b[0]).toFixed(2)},${keskiarvo(a[1], b[1]).toFixed(2)} `;
   }
-  return new Path2D(d + "Z");
+  return d + "Z";
 }
+
+function viivanReuna(viiva: Viiva, px: number, minPx: number, pisteita: number) {
+  const s = SIVELTIMET[viiva.sivellin] ?? SIVELTIMET.tussi;
+  const pisteet = viiva.pisteet.slice(0, pisteita).map(([x, y, p]) => [x * px, y * px, p]);
+  return getStroke(pisteet, {
+    size: Math.max(viiva.koko * px, minPx),
+    thinning: s.thinning,
+    smoothing: s.smoothing,
+    streamline: s.streamline,
+    simulatePressure: !viiva.paine,
+    last: pisteita >= viiva.pisteet.length,
+  });
+}
+
+/** Valmiin viivan ääriviiva SVG-polkuna (`d`), esim. palvelimen PNG-esikatselua varten. */
+export const viivanSvgPolku = (viiva: Viiva, px: number) => polkuReunasta(viivanReuna(viiva, px, 0, viiva.pisteet.length));
 
 // Valmiiden viivojen polut välimuistiin, jotta piirtymisanimaatio laskee vain keskeneräisen viivan.
 // Pistemäärä kuuluu avaimeen, koska piirtonäkymässä viiva kasvaa samana objektina kesken vedon.
@@ -74,17 +90,8 @@ function viivanPolku(viiva: Viiva, px: number, minPx: number, pisteita: number) 
     const osuma = valimuisti.get(viiva);
     if (osuma && osuma.avain === avain) return osuma.polku;
   }
-  const s = SIVELTIMET[viiva.sivellin] ?? SIVELTIMET.tussi;
-  const pisteet = viiva.pisteet.slice(0, pisteita).map(([x, y, p]) => [x * px, y * px, p]);
-  const reuna = getStroke(pisteet, {
-    size: Math.max(viiva.koko * px, minPx),
-    thinning: s.thinning,
-    smoothing: s.smoothing,
-    streamline: s.streamline,
-    simulatePressure: !viiva.paine,
-    last: valmis,
-  });
-  const polku = polkuReunasta(reuna);
+  const d = polkuReunasta(viivanReuna(viiva, px, minPx, pisteita));
+  const polku = d ? new Path2D(d) : null;
   if (valmis) valimuisti.set(viiva, { avain, polku });
   return polku;
 }
