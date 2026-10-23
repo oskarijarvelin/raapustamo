@@ -271,7 +271,8 @@ function Moderointipaneeli({ supabase }: { supabase: SupabaseClient }) {
             onClick={vaihdaTauko}
           >
             <span className="piste" />
-            {tauko ? "Näyttö tauolla" : "Näyttö live"}
+            <span className="tila-pitka">{tauko ? "Näyttö tauolla" : "Näyttö live"}</span>
+            <span className="tila-lyhyt">{tauko ? "Tauko" : "Live"}</span>
             <span className="toiminto">&nbsp;· {tauko ? "jatka" : "pysäytä"}</span>
           </button>
           <button className="siru kirjaudu-ulos" type="button" onClick={() => supabase.auth.signOut()}>

@@ -22,9 +22,9 @@
 
 .moderointisivu .tuotemerkki {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 12px;
-  min-width: 0;
 }
 
 .moderointisivu .tuotemerkki .erotin {
@@ -33,15 +33,23 @@
   background: var(--viiva);
 }
 
+/* Jos näyttöjä on monta, sirut rivittyvät eivätkä puristu logon päälle tai työnnä Ulos-nappia ruudun ulkopuolelle. */
 .moderointisivu .yla-oikea {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .moderointisivu .naytto-tila {
   border: 0;
   cursor: pointer;
+}
+
+.moderointisivu .naytto-tila .tila-lyhyt {
+  display: none;
 }
 
 .moderointisivu .naytto-syke {
@@ -535,16 +543,51 @@
   }
 }
 
+@media (max-width: 900px) {
+  .moderointisivu .tuote-ala,
+  .moderointisivu .naytto-tila .toiminto,
+  .moderointisivu .naytto-syke .toiminto {
+    display: none;
+  }
+
+  .moderointisivu .yla-oikea {
+    gap: 6px;
+  }
+
+  .moderointisivu .yla-oikea .siru {
+    gap: 6px;
+    padding: 0 10px;
+  }
+
+  .moderointisivu .yla-oikea .kirjaudu-ulos {
+    padding: 0 4px;
+  }
+}
+
 @media (max-width: 600px) {
   .moderointisivu .ylapalkki {
+    gap: 12px;
     padding: 12px 16px;
   }
 
-  .moderointisivu .tuote-ala,
-  .moderointisivu .naytto-tila .toiminto,
-  .moderointisivu .naytto-syke .toiminto,
+  /* Puhelimessa yläpalkkiin mahtuu logo ja tilasirut: tuotenimi ja pitkät tekstit pois. */
+  .moderointisivu .tuotemerkki .erotin,
+  .moderointisivu .tuotemerkki .ylaotsikko,
+  .moderointisivu .naytto-tila .tila-pitka,
   .moderointisivu .valilehdet .pitka {
     display: none;
+  }
+
+  .moderointisivu .naytto-tila .tila-lyhyt {
+    display: inline;
+  }
+
+  .moderointisivu .tuotemerkki .logo-merkki {
+    height: 18px;
+  }
+
+  .moderointisivu .yla-oikea .siru {
+    padding: 0 8px;
   }
 
   .moderointisivu .valilehdet {
