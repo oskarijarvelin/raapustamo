@@ -14,6 +14,8 @@ export interface NaytonSyke {
     virheita_min?: number;
     /** Resolume-silta: null = ei käytössä */
     silta?: { yhteys: boolean; nakyvissa: boolean } | null;
+    /** Keynote-näyttö: onko viivojen Realtime-kanava auki */
+    kanava?: boolean;
   };
 }
 
@@ -23,8 +25,8 @@ export type SykkeenTila = "ok" | "viive" | "poissa";
 export function sykkeenTila(syke: Pick<NaytonSyke, "viimeksi_nahty" | "tiedot">, nyt = Date.now()): SykkeenTila {
   const ika = nyt - Date.parse(syke.viimeksi_nahty);
   if (ika > 180_000) return "poissa";
-  const { verkossa, virheita_min, silta } = syke.tiedot;
-  if (ika > 75_000 || verkossa === false || (virheita_min ?? 0) > 0 || silta?.yhteys === false) return "viive";
+  const { verkossa, virheita_min, silta, kanava } = syke.tiedot;
+  if (ika > 75_000 || verkossa === false || (virheita_min ?? 0) > 0 || silta?.yhteys === false || kanava === false) return "viive";
   return "ok";
 }
 

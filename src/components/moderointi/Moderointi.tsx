@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel, Session, SupabaseClient } from "@supabase/supabase-js";
 import PiirrosCanvas from "@/components/PiirrosCanvas";
+import Kirjautuminen from "@/components/kirjautuminen/Kirjautuminen";
 import { moderointijono } from "@/lib/jono";
 import { kellonaika, piirraPiirros, sovitaCanvas, tunnus } from "@/lib/piirto";
 import { NAYTTOKANAVA, selainAsiakas } from "@/lib/supabase/selain";
@@ -51,7 +52,7 @@ export default function Moderointi() {
     );
   }
   if (istunto === undefined || (istunto && oikeus === null)) return <div className="kirjautuminen hiljainen">Ladataan…</div>;
-  if (!istunto) return <Kirjautuminen supabase={supabase} />;
+  if (!istunto) return <Kirjautuminen supabase={supabase} otsikko="Moderointi" />;
   if (!oikeus) {
     return (
       <div className="kirjautuminen">
@@ -66,48 +67,6 @@ export default function Moderointi() {
     );
   }
   return <Moderointipaneeli supabase={supabase} />;
-}
-
-function Kirjautuminen({ supabase }: { supabase: SupabaseClient }) {
-  const [sahkoposti, setSahkoposti] = useState("");
-  const [salasana, setSalasana] = useState("");
-  const [virhe, setVirhe] = useState<string | null>(null);
-  const [odottaa, setOdottaa] = useState(false);
-
-  async function kirjaudu(e: FormEvent) {
-    e.preventDefault();
-    setOdottaa(true);
-    setVirhe(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: sahkoposti, password: salasana });
-    if (error) setVirhe("Kirjautuminen epäonnistui. Tarkista sähköposti ja salasana.");
-    setOdottaa(false);
-  }
-
-  return (
-    <div className="kirjautuminen">
-      <form onSubmit={kirjaudu}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="logo-merkki" src="/brand/latf-merkki.png" alt="Lumo Art & Tech Festival" />
-        <h1 className="otsikko">Moderointi</h1>
-        <label>
-          Sähköposti
-          <input type="email" autoComplete="username" required value={sahkoposti} onChange={(e) => setSahkoposti(e.target.value)} />
-        </label>
-        <label>
-          Salasana
-          <input type="password" autoComplete="current-password" required value={salasana} onChange={(e) => setSalasana(e.target.value)} />
-        </label>
-        {virhe && (
-          <p className="virhe" role="alert">
-            {virhe}
-          </p>
-        )}
-        <button className="nappi nappi--ensisijainen nappi--iso" type="submit" disabled={odottaa}>
-          {odottaa ? "Kirjaudutaan…" : "Kirjaudu"}
-        </button>
-      </form>
-    </div>
-  );
 }
 
 // --- Moderointipaneeli ---
@@ -402,6 +361,7 @@ function Naytot({ naytot }: { naytot: NaytonSyke[] }) {
               (t.silta.yhteys
                 ? `Resolume: Raapustamo-klippi ${t.silta.nakyvissa ? "screenillä" : "piilossa"}`
                 : "Resolume-silta ei vastaa – piirrokset kiertävät ilman tahdistusta"),
+            t.kanava === false && "Keynote-kanava ei ole auki – viivat eivät tule näytölle",
             t.naytolla?.length ? `Screenillä: ${t.naytolla.map(tunnus).join(", ")}` : null,
             `Piirroksia muistissa: ${t.piirroksia ?? "?"}`,
             `Layout ${t.layout ?? "?"} · versio ${t.versio ?? "?"} · käynnissä ${t.kaynnissa_min ?? "?"} min`,

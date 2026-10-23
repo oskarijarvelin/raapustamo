@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "silta": "node silta/silta.mjs",
-    "kioskiavain": "node --env-file-if-exists=.env.local scripts/kioskiavain.mjs"
+    "kioskiavain": "node --env-file-if-exists=.env.local scripts/kioskiavain.mjs",
+    "keynote-tarkistus": "node --env-file-if-exists=.env.local scripts/keynote-tarkistus.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.137.0",

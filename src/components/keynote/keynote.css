@@ -1,0 +1,299 @@
+/* Keynote: editori (iPad, koko ruutu) ja näyttö */
+
+/* --- Editori --- */
+
+.keynote-editori {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #050505;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.keynote-editori .alusta {
+  position: relative;
+  background: var(--musta);
+  box-shadow: 0 0 0 1px var(--pinta-3);
+}
+
+.keynote-editori .alusta canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.keynote-editori .pinta {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Piilotettuna oranssi kehys muistuttaa, ettei piirros näy yleisölle. */
+.keynote-editori .piilotettu-kehys {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 4px var(--varoitus);
+}
+
+.keynote-editori .piilotettu-ohje {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  right: calc(env(safe-area-inset-right) + 12px);
+  padding: 8px 16px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--varoitus);
+  color: var(--musta);
+  pointer-events: none;
+}
+
+/* Tila alakulmassa, jottei työkalupalkki peitä sitä kapealla ruudulla. */
+.keynote-editori .tila-alue {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  left: calc(env(safe-area-inset-left) + 12px);
+  display: flex;
+  flex-wrap: wrap-reverse;
+  gap: 6px;
+  max-width: calc(50% - 12px);
+  pointer-events: none;
+}
+
+.keynote-editori .tila-alue .siru {
+  background: rgb(33 33 33 / 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.keynote-editori .yhteys .piste {
+  background: var(--teksti-3);
+}
+
+.keynote-editori .yhteys[data-tila="live"] .piste {
+  background: var(--vaara);
+  box-shadow: 0 0 0 4px rgb(245 70 83 / 0.3);
+  animation: keynote-live 1.6s ease-in-out infinite;
+}
+
+.keynote-editori .yhteys[data-tila="piilotettu"] {
+  background: var(--varoitus);
+  color: var(--musta);
+}
+
+.keynote-editori .yhteys[data-tila="piilotettu"] .piste {
+  background: var(--musta);
+}
+
+.keynote-editori .yhteys[data-tila="virhe"],
+.keynote-editori .siru.virhe,
+.keynote-editori .naytto[data-tila="poissa"] {
+  background: var(--vaara);
+  color: var(--valkoinen);
+}
+
+.keynote-editori .naytto {
+  color: var(--teksti-2);
+}
+
+.keynote-editori .naytto[data-tila="viive"] {
+  color: var(--varoitus);
+}
+
+@keyframes keynote-live {
+  50% {
+    box-shadow: 0 0 0 7px rgb(245 70 83 / 0.12);
+  }
+}
+
+.keynote-editori .tyokalunappi {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: calc(env(safe-area-inset-right) + 12px);
+  background: rgb(33 33 33 / 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.keynote-editori .tyokalut {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 14px;
+  width: max-content;
+  max-width: calc(100% - 2 * 64px);
+  padding: 8px 12px;
+  border-radius: 32px;
+  background: rgb(13 13 13 / 0.9);
+  box-shadow: inset 0 0 0 1px var(--pinta-3), 0 12px 32px rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.keynote-editori .ryhma {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keynote-editori .vari {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--c);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease;
+}
+
+.keynote-editori .vari[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px var(--musta), 0 0 0 5px var(--valkoinen);
+  transform: scale(1.08);
+}
+
+.keynote-editori .segmentit {
+  padding: 4px;
+  gap: 2px;
+  border-radius: var(--pyoristys-pill);
+  background: var(--pinta-2);
+}
+
+.keynote-editori .segmentit button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--pyoristys-pill);
+  background: transparent;
+  color: var(--teksti-2);
+  font-family: var(--font-otsikko);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keynote-editori .segmentit button[aria-pressed="true"] {
+  background: var(--valkoinen);
+  color: var(--musta);
+}
+
+.keynote-editori .koko {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pinta-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keynote-editori .koko::after {
+  content: "";
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--teksti-2);
+}
+
+.keynote-editori .koko[aria-pressed="true"] {
+  background: var(--valkoinen);
+}
+
+.keynote-editori .koko[aria-pressed="true"]::after {
+  background: var(--musta);
+}
+
+.keynote-editori .ikoninappi {
+  width: 44px;
+  height: 44px;
+}
+
+.keynote-editori .ikoninappi.varmista {
+  background: var(--vaara);
+}
+
+.keynote-editori .ikoninappi.nakyvyys.pois {
+  background: var(--varoitus);
+  color: var(--musta);
+}
+
+.keynote-editori .latausvirhe {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.85);
+  text-align: center;
+}
+
+/* --- Näyttö --- */
+
+.keynote-naytto {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--musta);
+  cursor: none;
+}
+
+.keynote-naytto .alusta {
+  position: relative;
+  transition: opacity 600ms ease;
+}
+
+.keynote-naytto[data-nakyvissa="false"] .alusta {
+  opacity: 0;
+}
+
+.keynote-naytto .alusta canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.keynote-naytto .tila {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.keynote-naytto .tila .piste {
+  background: var(--teksti-3);
+}
+
+.keynote-naytto .tila[data-tila="yhdistetty"] .piste {
+  background: var(--ok);
+}
+
+.keynote-naytto .tila[data-tila="virhe"] .piste {
+  background: var(--vaara);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keynote-editori .yhteys[data-tila="live"] .piste {
+    animation: none;
+  }
+}

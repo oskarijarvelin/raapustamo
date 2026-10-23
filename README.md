@@ -17,6 +17,8 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 | `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
 | `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` |
+| `/keynote` | Keynote-puhuja (iPad + Apple Pencil) | Kirjautuminen (esiintyjät ja moderaattorit). `?lava=lava-1` · `?suhde=16:9` (oletus: koko ruutu) · `?kieli=fi\|en`. Ks. [Keynote](#5-keynote) |
+| `/keynote/naytto` | Keynote-näyttö (projektori tai screen) | `?lava=lava-1` · `?tila=1` (yhteyden tila kulmassa) |
 | `POST /api/piirrokset` | Piirtonäkymä | Validointi, kioskiavain, Turnstile ja rate limit, tallentaa piirroksen moderointijonoon |
 
 ## Käyttöönotto
@@ -24,7 +26,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 ### 1. Supabase
 
 1. Luo projekti osoitteessa [supabase.com](https://supabase.com) **EU-alueelle** (esim. Frankfurt tai Tukholma).
-2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`).
+2. Avaa **SQL Editor** ja aja kansion [`supabase/migrations/`](supabase/migrations) tiedostot numerojärjestyksessä (`0001_…`, `0002_…`, `0003_…`).
 3. Luo moderaattorit kohdassa **Authentication → Users → Add user** (sähköposti ja salasana, "Auto Confirm User").
 4. Anna käyttäjille moderointioikeus SQL-editorissa:
 
@@ -79,6 +81,35 @@ kioski näyttää lähetettäessä virheen "Kioskia ei ole tunnistettu". Avaa si
 
 Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria saman festivaaliverkon puhelinten kanssa.
 
+### 5. Keynote
+
+Keynote-puhuja piirtää iPadilla koko ruudun kokoiselle alustalle, ja viivat piirtyvät keynote-näytölle
+reaaliajassa jo vedon aikana. Piirrokset eivät kulje moderoinnin kautta, joten editori vaatii kirjautumisen.
+
+1. Aja migraatio `0003_keynote.sql`.
+2. Luo esiintyjälle (tai iPadille) tunnus kohdassa **Authentication → Users → Add user** ja anna sille keynote-oikeus.
+   Moderaattoreilla oikeus on jo valmiiksi.
+
+   ```sql
+   insert into public.esiintyjat (kayttaja, nimi)
+   select id, 'Keynote-iPad' from auth.users where email = 'keynote@example.com';
+   ```
+
+3. Avaa näyttökoneella `/keynote/naytto?lava=lava-1` ja iPadilla `/keynote?lava=lava-1`. Kirjaudu iPadilla kerran,
+   ja lisää sivu Safarin jakovalikosta **Koti-valikkoon**, jolloin editori aukeaa koko ruudulle ilman Safarin palkkeja.
+4. Tarkista oikeudet: `npm run keynote-tarkistus`. Kirjautumaton näyttö saa kuunnella kanavaa, mutta sen
+   lähettämät viivat eivät saa päätyä näytölle.
+
+Editorissa:
+
+- Alusta täyttää ruudun, ja näyttö sovittaa sen samaan kuvasuhteeseen (mustat reunat tarvittaessa). Jos näytön
+  kuvasuhde on tiedossa, sen voi pakottaa: esim. `?suhde=16:9` tai LED-screenille `?suhde=4032x1152`.
+- Tyhjä alusta seuraa iPadin asentoa. Kun alustalle on piirretty, kuvasuhde pysyy, kunnes alusta tyhjennetään.
+- Kämmenen hylkäys: kun Apple Pencil on havaittu, sormet eivät piirrä. ⌘Z / ⇧⌘Z toimivat näppäimistöllä.
+- Silmä-napista piirroksen saa piilotettua näytöltä (näyttö häivyttää sen pois). Piilotettuna editorin reunat ovat oranssit.
+- Tyhjennys vaatii toisen napautuksen, ja senkin voi kumota.
+- Vasemmassa alakulmassa näkyy yhteyden tila (punainen piste = näytöllä) ja keynote-näytön syke.
+
 ## Arkkitehtuuri lyhyesti
 
 - **Next.js** (App Router), hostaus **Vercel**. Funktiot ajetaan Dublinissa (`dub1`, [vercel.json](vercel.json)) Supabase-projektin (`eu-west-1`, Irlanti) vieressä. Jos Supabase-projekti vaihtuu toiselle alueelle, vaihda myös tämä.
@@ -103,6 +134,12 @@ Tunnistettu kioski saa oman rate limit -laskurinsa. Se ei siis jaa laskuria sama
   - Moderoinnissa epäilyttävät ja sopimattomat näkyvät jonossa ensin, ja sopimattomat sumennetaan. **Tekoäly ei koskaan hyväksy eikä hylkää itse.**
   - Jos tekoäly ei vastaa tai avain puuttuu, piirros menee jonoon ilman arviota. Mallin kieltäytyminen merkitään epäilyttäväksi.
   - Kustannus noin 0,2–0,3 $ tuhatta piirrosta kohden. Piirroksen kuva lähetetään Anthropicille (Yhdysvallat), mikä pitää mainita tietosuojaselosteessa.
+- **Keynote** ([src/lib/keynote.ts](src/lib/keynote.ts), [src/components/keynote/](src/components/keynote)):
+  - Viivat kulkevat Realtime-broadcastina yksityisellä kanavalla `keynote:<lava>`: alku, uudet pisteet noin 25 kertaa sekunnissa ja valmis viiva kokonaisena. Realtime Authorization -politiikat (`realtime.messages`) sallivat kuuntelun kaikille mutta lähettämisen vain esiintyjille ja moderaattoreille. Samanniminen julkinen kanava on eri kanava.
+  - Editori tallentaa lavan tilan `lavat`-tauluun muutosten jälkeen (enintään 0,7 s viiveellä), joten editori ja näyttö palautuvat uudelleenlatauksesta.
+  - Valmiit muutokset (viiva, kumoaminen, tyhjennys, piilotus) ovat versioituja. Jos näytöltä puuttuu versioita, se hakee tallennetun tilan. Tallennuksen jälkeen editori lähettää versionumeron, ja näyttö tarkistaa version lisäksi 20 sekunnin välein.
+  - Keynote-näyttö lähettää sykkeen tunnuksella `keynote-<lava>`. Syke näkyy moderoinnin yläpalkissa ja editorissa.
+  - Kehityksessä ilman Supabasea editori ja näyttö toimivat saman selaimen välilehdissä (BroadcastChannel ja localStorage).
 - **Piirrokset** tallennetaan vektoreina (`viivat`, koordinaatit 0–1), joten ne skaalautuvat mihin kokoon tahansa ja voivat piirtyä screenille animaationa.
 
 ## Seuraavaksi

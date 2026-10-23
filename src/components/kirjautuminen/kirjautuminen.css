@@ -1,0 +1,58 @@
+/* Kirjautuminen: moderointi ja keynote-editori */
+
+.kirjautuminen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.kirjautuminen form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(100%, 400px);
+  padding: 32px 28px;
+  border-radius: var(--pyoristys-kortti);
+  background: var(--pinta-1);
+  box-shadow: inset 0 0 0 1px var(--pinta-3);
+}
+
+.kirjautuminen .otsikko {
+  font-size: 36px;
+}
+
+.kirjautuminen .logo-merkki {
+  align-self: flex-start;
+}
+
+.kirjautuminen label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.kirjautuminen input {
+  min-height: var(--kosketus);
+  padding: 0 16px;
+  border: 1px solid var(--viiva);
+  border-radius: 14px;
+  background: var(--musta);
+  color: var(--valkoinen);
+  font: inherit;
+  font-weight: 400;
+}
+
+.kirjautuminen input:focus-visible {
+  outline: 3px solid var(--korostus);
+  outline-offset: 2px;
+}
+
+.kirjautuminen .virhe {
+  margin: 0;
+  color: var(--vaara);
+  font-weight: 600;
+  font-size: 14px;
+}
