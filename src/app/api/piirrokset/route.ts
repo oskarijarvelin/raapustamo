@@ -95,10 +95,13 @@ export async function POST(pyynto: Request) {
 
   // Tekoälyesisuodatus vastauksen jälkeen, jottei kävijä odota sitä. Moderointi saa arvion Realtimella.
   after(async () => {
+    const alku = Date.now();
     const arvio = await arvioiPiirros(viivat);
     if (!arvio) return;
     const { error } = await supabase.from("piirrokset").update({ ai_arvio: arvio }).eq("id", piirros.id);
-    if (error) console.error("Tekoälyarvion tallennus epäonnistui", error);
+    if (error) return console.error("Tekoälyarvion tallennus epäonnistui", error);
+    // Festivaalin aikana lokista näkee, että esisuodatus toimii ja kuinka paljon sitä käytetään.
+    console.log(`Tekoälyarvio #${piirros.nro}: ${arvio.luokka} ${arvio.varmuus.toFixed(2)}, ${Date.now() - alku} ms`);
   });
 
   return vastaus(201, { id: piirros.id, nro: piirros.nro });
