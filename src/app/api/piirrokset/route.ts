@@ -8,6 +8,8 @@ import { tarkistaLahetys } from "@/lib/validointi";
 
 const MAKSIMIKOKO = 400_000; // tavua
 const TURNSTILE_HOSTNIMET = hostnimet(process.env.TURNSTILE_HOSTNAMES);
+// Ilman näitä lähetys ei ole käytössä. Lokiin kirjataan vain nimet, ei koskaan arvoja.
+const PAKOLLISET = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "LAITE_SUOLA", "TURNSTILE_SECRET"];
 
 const vastaus = (status: number, body: Record<string, unknown>) => NextResponse.json(body, { status });
 
@@ -15,7 +17,11 @@ export async function POST(pyynto: Request) {
   const supabase = palvelinAsiakas();
   const suola = process.env.LAITE_SUOLA;
   const turnstileSalaisuus = process.env.TURNSTILE_SECRET;
-  if (!supabase || !suola || !turnstileSalaisuus) return vastaus(503, { virhe: "palvelu-ei-kaytossa" });
+  if (!supabase || !suola || !turnstileSalaisuus) {
+    const puuttuvat = PAKOLLISET.filter((nimi) => !process.env[nimi]);
+    console.error("Lähetys ei ole käytössä, puuttuvat ympäristömuuttujat:", puuttuvat.join(", ") || "ei tiedossa");
+    return vastaus(503, { virhe: "palvelu-ei-kaytossa" });
+  }
 
   const raaka = await pyynto.text();
   if (raaka.length > MAKSIMIKOKO) return vastaus(413, { virhe: "liian-suuri" });
