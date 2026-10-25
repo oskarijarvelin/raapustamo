@@ -65,5 +65,10 @@ Silloin mitataan myös Spoutin/Syphonin ja Resolumen kuorma, mitä tämä skript
 
 | Päivä | Kone | Kesto | Muistin kasvu | FPS (mediaani / min) | Lataukset / virheet | Tulos |
 |---|---|---|---|---|---|---|
-| 23.10. | MacBook, näkymätön (savutesti) | 3 min | – (liian lyhyt) | 60 / 59 | 0 / 0 | skripti toimii |
+| 23.10. | Mac, näkymätön (savutesti) | 3 min | – (liian lyhyt) | 60 / 59 | 0 / 0 | skripti toimii |
+| 24.–25.10. | Mac, näkymätön, tuotanto `?demo=40&skaala=1` (4032 × 1152) | 12 h | 0,5 Mt/h (JS-muisti 5,6 → 11,3 Mt, maks. 29,2) | 60 / 59 | 0 / 0 | **OK** |
 | | | | | | | |
+
+Huomiot 24.–25.10.: DOM-solmujen määrä pysyi tasaisena, eikä yhtään uudelleenlatausta, kaatumista tai virhettä tullut 12 tunnissa
+(noin 1 400 demohyväksyntää ja 48 hätäpysäytystä paluineen). Kuvataajuutta näkyvällä Chromella ja oikealla näytönohjaimella ei ole
+vielä mitattu.

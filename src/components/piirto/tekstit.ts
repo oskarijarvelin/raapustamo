@@ -20,6 +20,9 @@ export const TEKSTIT = {
     vahvistusTeksti:
       "Piirros näytetään moderoinnin jälkeen festivaalin LED-screenillä ja festivaalin jälkeen verkkogalleriassa. Älä piirrä nimiä tai yhteystietoja.",
     ehdot: "Hyväksyn käyttöehdot",
+    kayttoehdot: "Käyttöehdot",
+    tietosuoja: "Tietosuojaseloste",
+    sulje: "Sulje",
     lahetaVahvistus: "Lähetä piirros",
     lahetetaan: "Lähetetään…",
     jatka: "Jatka piirtämistä",
@@ -58,6 +61,9 @@ export const TEKSTIT = {
     vahvistusTeksti:
       "After moderation, your drawing is shown on the festival LED screen and, after the festival, in an online gallery. Please don't draw names or contact details.",
     ehdot: "I accept the terms of use",
+    kayttoehdot: "Terms of use",
+    tietosuoja: "Privacy notice",
+    sulje: "Close",
     lahetaVahvistus: "Send drawing",
     lahetetaan: "Sending…",
     jatka: "Keep drawing",

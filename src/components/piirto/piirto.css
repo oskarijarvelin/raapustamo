@@ -427,6 +427,53 @@
   gap: 8px;
 }
 
+/* --- Käyttöehdot ja tietosuojaseloste --- */
+
+.piirtosivu .oikeudelliset-linkit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+}
+
+.piirtosivu .oikeudelliset-linkit button {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--teksti-2);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.piirtosivu dialog.oikeudellinen-ikkuna {
+  width: min(100% - 24px, 720px);
+  height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.piirtosivu dialog.oikeudellinen-ikkuna:not([open]) {
+  display: none;
+}
+
+.piirtosivu .oikeudellinen-sisalto {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 24px 16px;
+}
+
+.piirtosivu dialog.oikeudellinen-ikkuna > .nappi {
+  margin: 0 24px 20px;
+}
+
 /* --- Kioskin käyttämättömyyslaskuri --- */
 
 .piirtosivu .laskuri {

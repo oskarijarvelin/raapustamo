@@ -2,6 +2,8 @@
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Kayttoehdot, Tietosuojaseloste, type OikeudellinenSivu } from "@/components/oikeudelliset/Oikeudelliset";
+import "@/components/oikeudelliset/oikeudelliset.css";
 import { KOOT, KUMIN_VARI, MUSTEET, SIVELTIMET, piirraPiirros, piirraViiva, sovitaCanvas, tunnus } from "@/lib/piirto";
 import { TURNSTILE_ACTION } from "@/lib/turnstile";
 import type { Kieli, KokoId, SivellinId, Viiva } from "@/lib/tyypit";
@@ -326,6 +328,16 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
     }
   }
 
+  // Käyttöehdot ja tietosuojaseloste avautuvat sovelluksen omaan ikkunaan, jottei piirros katoa
+  // (eikä kioskin käyttäjä pääse sivulta muualle).
+  const oikeudellinenRef = useRef<HTMLDialogElement>(null);
+  const [oikeudellinen, setOikeudellinen] = useState<OikeudellinenSivu | null>(null);
+  function avaaOikeudellinen(sivu: OikeudellinenSivu) {
+    setOikeudellinen(sivu);
+    if (!oikeudellinenRef.current?.open) oikeudellinenRef.current?.showModal();
+    oikeudellinenRef.current?.querySelector(".oikeudellinen-sisalto")?.scrollTo(0, 0);
+  }
+
   const kiitosRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (nakyma !== "kiitos" || !kiitos || !kiitosRef.current) return;
@@ -348,6 +360,7 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
 
   const nollaaKioski = useCallback(() => {
     setLaskuri(null);
+    oikeudellinenRef.current?.close();
     dialogiRef.current?.close();
     tyhjennaAlusta();
     setNakyma("aloitus");
@@ -421,6 +434,14 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
           <button className="nappi nappi--ensisijainen nappi--iso" type="button" onClick={() => setNakyma("piirto")}>
             {T.aloita}
           </button>
+          <p className="oikeudelliset-linkit">
+            <button type="button" onClick={() => avaaOikeudellinen("ehdot")}>
+              {T.kayttoehdot}
+            </button>
+            <button type="button" onClick={() => avaaOikeudellinen("tietosuoja")}>
+              {T.tietosuoja}
+            </button>
+          </p>
         </main>
       )}
 
@@ -560,6 +581,14 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
             <input type="checkbox" checked={ehdot} onChange={(e) => setEhdot(e.target.checked)} />
             <span>{T.ehdot}</span>
           </label>
+          <p className="oikeudelliset-linkit">
+            <button type="button" onClick={() => avaaOikeudellinen("ehdot")}>
+              {T.kayttoehdot}
+            </button>
+            <button type="button" onClick={() => avaaOikeudellinen("tietosuoja")}>
+              {T.tietosuoja}
+            </button>
+          </p>
           <div className="turnstile" ref={turnstileRef} />
           {(virhe || turnstileVirhe) && (
             <p className="virhe" role="alert">
@@ -580,6 +609,16 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
             </button>
           </div>
         </form>
+      </dialog>
+
+      <dialog ref={oikeudellinenRef} className="oikeudellinen-ikkuna" onClose={() => setOikeudellinen(null)}>
+        <div className="oikeudellinen-sisalto">
+          {oikeudellinen === "ehdot" && <Kayttoehdot kieli={kieli} avaa={avaaOikeudellinen} />}
+          {oikeudellinen === "tietosuoja" && <Tietosuojaseloste kieli={kieli} />}
+        </div>
+        <button className="nappi nappi--ensisijainen" type="button" onClick={() => oikeudellinenRef.current?.close()}>
+          {T.sulje}
+        </button>
       </dialog>
 
       {laskuri !== null && (

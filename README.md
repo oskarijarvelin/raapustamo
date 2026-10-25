@@ -17,6 +17,7 @@ iPad-kioskilla, moderaattorit hyväksyvät piirrokset, ja hyväksytyt piirrokset
 |---|---|---|
 | `/` | Kävijä (QR) | `?kieli=fi\|en` |
 | `/?kiosk=ipad-1` | iPad-kioski | Vaatii kioskiavaimen (ks. [Kioskit](#4-kioskit)). Nollautuu käyttämättömyyden jälkeen, kämmenen hylkäys Apple Pencilillä |
+| `/ehdot`, `/tietosuoja` | Kävijät | Käyttöehdot ja tietosuojaseloste (`?kieli=en`). Myös piirtonäkymän ikkunassa. **Luonnos:** avoimet kohdat korostettuina, ks. [Oikeudelliset.tsx](src/components/oikeudelliset/Oikeudelliset.tsx) |
 | `/moderointi` | Moderaattorit | Kirjautuminen sähköpostilla ja salasanalla |
 | `/naytto` | LED-screen (Resolume) | `?layout=avaruus\|trio\|solo\|seina` (oletus avaruus) · `?vaihto=12` · `?maara=6` · `?qr=0` · `?osoite=…` · `?qr-url=…` · `?skaala=1` · `?tunnus=led-1` · `?uudelleenlataus=240` · `?silta=http://localhost:7400` · `?avain=…` (kerran, ks. [Näytöt](#6-näytöt)) · `?demo=40` (generoidut piirrokset, ks. [kestotesti](docs/testit/kestotesti.md)) |
 | `/keynote` | Keynote-puhuja (iPad + Apple Pencil) | Kirjautuminen (esiintyjät ja moderaattorit). `?lava=lava-1` · `?suhde=16:9` (oletus: koko ruutu) · `?video=1` (esitysmateriaali taustaksi) · `?kieli=fi\|en`. Ks. [Keynote](#5-keynote) |
