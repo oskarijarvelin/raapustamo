@@ -7,6 +7,7 @@ import "@/components/oikeudelliset/oikeudelliset.css";
 import { KOOT, KUMIN_VARI, MUSTEET, SIVELTIMET, piirraPiirros, piirraViiva, sovitaCanvas, tunnus } from "@/lib/piirto";
 import { TURNSTILE_ACTION } from "@/lib/turnstile";
 import type { Kieli, KokoId, SivellinId, Viiva } from "@/lib/tyypit";
+import Avaruustausta from "./Avaruustausta";
 import { TEKSTIT } from "./tekstit";
 import "./piirto.css";
 
@@ -402,6 +403,7 @@ export default function Piirtonakyma({ kioski, kieli: urlKieli }: Props) {
       {TURNSTILE_SITEKEY && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" onReady={renderoiTurnstile} />
       )}
+      {nakyma !== "piirto" && <Avaruustausta />}
       <header className="ylapalkki">
         <div className="tuotemerkki">
           {/* eslint-disable-next-line @next/next/no-img-element */}
